@@ -1,0 +1,1680 @@
+================================================================
+STINGRAY FIELD NOTES
+================================================================
+Lessons, symptom-to-cause mappings, and principles distilled from
+three years of Stormy the Stingray's development (2023.05.06 -
+2026.07.11).
+
+Purpose:  a working engineer's field manual - what NOT to do,
+          what to do INSTEAD, and why.  Each item is a
+          hard-won lesson from the source log (Stingray
+          Experience.wpd, 832 pp).  Every item cites the
+          stardate it was learned so you can trace context.
+
+Companion file:  Stingray_Curation_Notes.txt has the raw
+                 stardated entries and full context.
+                 Stingray_Builders_Manual.txt has the
+                 forward-looking "how to rebuild" reference.
+
+Style:  plain text.  No markdown.  "====" as dividers.
+        Written to be pasted into anything.
+================================================================
+
+
+================================================================
+PART I - THE AI-IN-LOOP DISCIPLINE
+================================================================
+
+AI is a colleague, not an oracle.  Every lesson in this section
+was purchased with real time or real hardware.
+
+--------------------------------------------------------------
+1.  ***THE CONTEXT.TXT DISCIPLINE***  (2026.03.04)
+    Long AI chats silently overflow the model's context window.
+    Once overflowed, the AI's answers become plausible-but-wrong
+    with no warning.  DEFENSE: keep a `context.txt` file that
+    lists your hardware, OS, workspace layout, and the current
+    problem.  Attach it at the START of every new chat AND
+    reattach whenever you switch topics.  Ask the AI to suggest
+    additions as you go.  This IS why James invented the
+    practice; cite it.
+
+--------------------------------------------------------------
+2.  ***NEVER RUN AN AI-GENERATED DESTRUCTIVE COMMAND WITHOUT
+    --DRY-RUN FIRST***  (2026.06.04 - the disaster)
+    Google Gemini AI Overview produced an `rsync` recipe that RECURSIVELY
+    COPIED the destination into itself, wiping Stormy's entire
+    SSD.  Rule: for `rsync`, `dd`, `cp -r`, `find ... -delete`,
+    any partition op - RUN WITH `--dry-run` FIRST.  Read the file
+    list.  Confirm src and dst one more time.  Only then drop
+    `--dry-run`.  This is not paranoia; it's how you keep your
+    project alive.
+
+--------------------------------------------------------------
+3.  ***`rsync` TRAILING-SLASH RULE***  (2026.06.04)
+    `src/` copies the CONTENTS of src into dst.
+    `src` (no slash) copies src DIRECTORY nested inside dst.
+    AI-generated `rsync` examples routinely get this wrong.  This
+    is the single most common cause of recursive-copy disasters.
+
+--------------------------------------------------------------
+4.  ***"YOU'RE FIRED!" PATTERN***  (2025.02.24 origin)
+    When an AI's multi-file edits leave you worse off than before
+    - stop iterating with the same AI.  Revert every `.bak` from
+    the failed session (`git restore .`).  Start over with a
+    different model or a human.  Do not brute-force through it.
+    Multi-file edits with no corresponding new understanding =
+    revert-and-walk-away.
+
+--------------------------------------------------------------
+5.  ***DO NOT USE AI FOR TROUBLESHOOTING***  (2026.02.21 keystone
+    - James's own headline, preserve verbatim)
+    Field Note headline, from James, after wasting two weekends
+    with VSCode / GPT-5.2-Codex and Grok Code Fast 1:
+      "Yesterday and today wasted with VSCode / GPT 5.2 Codex
+       & Grok Code Fast 1
+       DO NOT USE AI FOR TROUBLESHOOTING.  NEVER!"
+    Interpretation:  AIs are great at CODE-WRITING when you know
+    the answer.  They are poor at DIAGNOSING unknown misbehaviors
+    where hallucinated fixes cascade.  For diagnostic problems,
+    read logs yourself first.  Ask a HUMAN expert.  Use AI only
+    once you have a hypothesis you want to test.
+
+    Exception noted by James 2026.07.26:  "Present company
+    Claude Opus 4.7 excepted.  Extended context and self-
+    reflection has much improved troubleshooting.  You've yet
+    to mess me up."  Field-Note translation: the rule applies
+    to AIs of the GPT-4o / Grok / Sonnet-3.5 generation and
+    to short-context sessions.  With Opus-class models and
+    disciplined session hygiene (context.txt, condensed
+    recaps, handoff notes - items 1, 11, 15), AI-assisted
+    troubleshooting has become genuinely useful.  Re-
+    evaluate the rule per generation of model, not once and
+    for all.
+
+--------------------------------------------------------------
+6.  ***VERIFY WHICH MODEL YOU ARE ACTUALLY TALKING TO***
+    (2026.06.08)
+    Poe / Copilot / VSCode all can silently swap the model
+    beneath you (expired session, tier downgrade, retired
+    version).  A GPT-4o answer given while you thought you were
+    talking to Claude-Opus is worse than useless.  Symptom: prior
+    context vanishes; suggestions contradict yesterday's plan.
+    Fix: look at the model name in the reply header EVERY reply.
+    If you find your dialog partner has been replaced, start
+    over with a fresh chat plus your context.txt.
+
+--------------------------------------------------------------
+7.  ***AI CROSS-BOUNDARY CAUTION - BOOT/KERNEL/EEPROM/PARTITION
+    IS SACRED***  (2025.11.27 CP210x saga)
+    When an AI-suggested fix crosses a "boot integrity" boundary
+    - kernel install, initramfs regen, EEPROM edit, partition
+    table change - STOP and audit.  Ask if there's a SHORTER
+    path first.  Example: Copilot suggested installing
+    `linux-generic-hwe-24.04` (which has no Pi 5 DTB and would
+    have bricked the Pi) to get a CP210x driver, when a simple
+    reboot into the already-installed newer raspi kernel worked.
+
+--------------------------------------------------------------
+8.  ***AI OVERCOMPLICATION IS A CODE SMELL***  (2025.12.08)
+    When an AI proposes a NEW node/service/plugin to solve a
+    problem that could be a config change in an existing file -
+    the AI has lost the plot.  Example: Copilot proposed a bespoke
+    "IMU correction node" for OAK-D axis alignment; the real fix
+    was setting `parent_frame:=oakd_front_panel` in the launch
+    args.  Shortest fix path that touches the fewest files is
+    nearly always right.
+
+--------------------------------------------------------------
+9.  ***AI-GENERATED OFFICIAL DRIVERS ARE STILL AI-GENERATED***
+    (2026.03.28 - the driver shootout)
+    Even when a hardware manufacturer publishes a "current"
+    official driver, check its provenance.  BasicMicro's
+    `basicmicro_ros2` states in its header:
+      "Author: Generated by Claude Code"
+    Its 18300 lines of mock-based tests exercise the AI's
+    understanding of the protocol, NOT real hardware behavior.
+    Wimble's hand-written 3700-line C++ `roboclaw_driver`
+    (battle-tested on Sigyn) is preferable.  For any hardware-
+    in-the-loop code, prefer battle-tested-by-a-human over
+    AI-generated.
+
+--------------------------------------------------------------
+10. ***OWN A LOCAL AI AS A NO-CLOUD FALLBACK***  (2026.03.01;
+    DOWNGRADED 2026.07.26)
+    Install GPT4All from nomic.ai + a small local model like
+    Phi-3 Mini Instruct.  Runs entirely offline.  When the cloud
+    LLM misbehaves, expires, or hits a rate limit, the local
+    fallback is still there.
+
+    Downgrade note (James 2026.07.26):  "Not sure this is
+    valid.  Local LLMs are severely limited and of little
+    use in the situations we're discussing."  Locally-hosted
+    small models are far behind cloud Opus-class models on
+    the kind of debugging and integration tasks this project
+    generates.  Keep GPT4All or an equivalent installed as a
+    hedge against a total-internet-outage day, but do NOT
+    plan to use it as a working substitute for the cloud AI.
+    Its practical role is: "the internet is down and I need
+    to look up a bash flag," not "help me diagnose why Nav2
+    is dropping timestamps."
+
+--------------------------------------------------------------
+11. ***HANDOFF-NOTE DOCTRINE***  (2026.05.15 / 2026.06.06)
+    End every AI session by asking: "In PLAIN TEXT, summarize
+    what we accomplished, list what's still open, and save
+    yourself a memory file at
+    `/memories/session/<yyyy-mm-dd>-<topic>.md`.  Give me the
+    full path."  Paste the summary into your project log.
+    Reference the memory-file path at the START of the next
+    session ("read /memories/session/... and continue").  This
+    preserves continuity without replaying the whole dialog.
+
+--------------------------------------------------------------
+12. ***CROSS-CHECK AI PIN AND WIRE ASSIGNMENTS AGAINST THE
+    DATASHEET BEFORE POWERING UP***  (2025.02 Grok GPIO)
+    Grok gave GPIO pin assignments that would have shorted rails
+    to signals.  Every AI-produced wiring diagram gets one
+    pass with the physical device datasheet in one hand before
+    the LiPo goes anywhere near it.
+
+--------------------------------------------------------------
+13. ***A NEW AI PROPOSING MULTIPLE FILE EDITS WITH NO NEW
+    UNDERSTANDING = REVERT***  (2026.02.21)
+    Symptom: "Now try this."  "That didn't work?  Try this."
+    "That didn't work?  Try this."  If between attempts the AI
+    is not explaining WHY the previous attempt failed and WHAT
+    that teaches about the system, it's guessing.  Guessing
+    across N files leaves you N files-worth of wreckage.
+    `git status`, `git restore .`, walk away.
+
+--------------------------------------------------------------
+14. ***THE "AUTHOR: GENERATED BY <MODEL>" LINE IS A CODE
+    SMELL***  (2026.03.28)
+    If code in a manufacturer's official repo declares AI
+    authorship, look extra hard at whether it's been HARDENED
+    on real hardware.  Mock-based tests validate that the code
+    matches the AI's understanding of the protocol, not that it
+    works on physical devices in your specific environment.
+
+--------------------------------------------------------------
+15. ***KEEP AI CHATS SHORT AND FOCUSED - CONTINUITY IS
+    EXPENSIVE***  (2026.05.31, verbatim from James's HBRC
+    testimony)
+    The ENTIRE thread gets processed with each new query.  A
+    weekend of chatty debugging can blow through a month's AI
+    budget.  Rules:
+      - one issue per chat
+      - reset with a fresh chat + context.txt when the topic
+        changes
+      - end every chat with the handoff-note discipline
+        (item 11)
+
+
+================================================================
+PART II - ELECTRICAL
+================================================================
+
+--------------------------------------------------------------
+16. ***BENCH PSU + BUCK CONVERTER = INRUSH TRAP***  (2025.09.29)
+    Many bench PSUs cannot source the inrush surge a buck
+    converter demands when charging its input caps.  Symptom:
+    RoboClaw's main-battery voltage reads far below the PSU
+    nameplate; RoboClaw ERR LED solid.  Fix: use the LiPo
+    battery for full-system tests.  Bench PSU is fine only
+    for isolated components with no buck converter inline.
+
+--------------------------------------------------------------
+17. ***CHECK MOTION STUDIO ENCODER MODE ON BOTH CHANNELS
+    AFTER ANY AI OR DRIVER SESSION***  (2026.03.20-21;
+    ROOT CAUSE CONFIRMED 2026.07.26)
+    The "encoder-killer mystery" - two RoboClaw boards that
+    appeared to lose their M1 encoder input within days of
+    each other - turned out to be NEITHER electrical damage
+    NOR cable-coupling.  Root cause CONFIRMED (James
+    2026.07.26) is that Motion Studio's General Settings /
+    I/O / Encoder 1 Mode had silently changed from Quadrature
+    to ABSOLUTE.  Root cause of the setting change itself
+    never found; strong suspects are a stray write from an
+    earlier AI-assisted Motion Studio session or an autosave
+    collision.
+
+    Symptoms (all consistent with an encoder configured in
+    the wrong mode, NOT with damage):
+      - Nav2 goal produces the honey-bee dance: left wheel
+        jiggles ~1/8 rev, right wheel tries to turn.
+      - In Motion Studio drydock: rotating the wheel by
+        hand, encoder value sticks at 0 when stopped or
+        latches near ~2035 (suspiciously close to HALF of
+        3200 counts per revolution).
+      - Swapping the M1 and M2 encoder cables at the
+        RoboClaw does NOT move the fault - the wrong-mode
+        setting is on the RoboClaw side.
+      - Autotune on M1 diverges; only power-cycle stops
+        the motors.
+
+    Fix (30 seconds if you know to check):
+      Motion Studio -> General Settings -> I/O ->
+      Encoder 1 Mode: change from Absolute to QUADRATURE.
+      Encoder 2 Mode: verify also QUADRATURE.
+      Write to RoboClaw.  Power-cycle.  Retest.
+
+    Defensive practice (the ACTUAL Field-Note principle):
+      After ANY driver work, ANY AI-assisted Motion Studio
+      session, or any Motion Studio version upgrade,
+      EXPLICITLY verify that both Encoder Modes are set to
+      Quadrature.  Do it before you power the motors and
+      before you launch Nav2.  This one 5-second check is
+      worth two RoboClaw boards' worth of frustration.
+
+    Cross-references (this is why the check matters):
+      - Item 8 (AI overcomplication is a code smell).  The
+        original Claude Opus 4.6 diagnosis of the same
+        symptoms proposed an elaborate 6-part cable-PWM-
+        coupling / CMOS-damage chain with caps, series
+        resistors, Schottky clamps and TVS diodes.  All
+        plausible in isolation; NONE the actual cause.
+        When an AI diagnosis is complex, look for the
+        simple setting-change explanation FIRST.
+      - Item 40 (config edit didn't take effect).  Same
+        family of failure: the running system is not what
+        you think it is because a setting somewhere has
+        silently changed.
+
+    Historical note:  Earlier versions of this Field Notes
+    file (through 2026.07.26 morning) described PWM coupling
+    into encoder wires as the proven cause of the two-board
+    incident and prescribed physical wire separation + caps
+    + clamp diodes as the fix.  That description is
+    withdrawn.  Physical separation of motor and encoder
+    wires remains reasonable general practice (it costs
+    nothing) but was NOT what solved the encoder-killer
+    mystery on Stormy.  See stardate 2026.03.20-21 in the
+    source log for the full narrative arc, including
+    Claude Opus 4.6's hypothesis and Roberto's donor board
+    exhibiting the same symptoms.
+
+--------------------------------------------------------------
+18. ***SHUNT REGULATORS PROTECT THE POWER BUS, NOT SIGNAL-
+    LEVEL INPUTS***  (2026.03.21; scope corrected 2026.07.26)
+    General principle worth remembering:
+    The Pololu 3779 shunt regulator on Stormy handles regen
+    voltage spikes on the LiPo bus.  It does NOT protect any
+    signal-level input (encoder lines, I2C, UART, GPIO) from
+    anything.  Signal-level protection is a separate design
+    problem: series resistors + clamp diodes, TVS, opto-
+    isolation, or shielded/twisted routing.
+    (This item originally motivated the item-17 elaborate
+    encoder-line protection scheme.  With the encoder-killer
+    mystery now RESOLVED as a Motion Studio setting change -
+    see item 17 - this note stands on its own as a general
+    principle, not as a specific mitigation.)
+
+--------------------------------------------------------------
+19. ***THE PI 5 OFFICIAL 5.1V/5A PSU CAN BE KILLED BY POWERED-
+    HUB INRUSH***  (2025.11.30)
+    ANKER powered USB hub + Pi 5 + accessories (LD19 + OAK-D +
+    keyboard) drew enough peak current at 5.1V to sag the PSU
+    into repeated brownout, and eventually killed it.  Symptoms:
+    Pi reaches Ubuntu splash, then reboots in loop; scope shows
+    no visible sag at buck-converter output; Pi PMIC Monitor
+    reports "low voltage warning".  Fix chain:
+      - `PSU_MAX_CURRENT=5000` in EEPROM
+      - `usb_max_current_enable=1` in `/boot/firmware/config.txt`
+      - 52Pi PD Power Extension Board becomes the canonical Pi
+        feed (SUPERSEDES the USB-C jack)
+      - Keep a spare OFFICIAL CanaKit PSU on hand.
+
+--------------------------------------------------------------
+20. ***WIRE GAUGE FROM MEASURED PEAK CURRENT, NOT NAMEPLATE***
+    (2025.11.30)
+    Rules Stormy uses:
+      LiPo bus (up to 15A):        14 AWG (RoboClaw capacity)
+      Bus -> buck feed (10A/<6ft): 16 AWG (< 3% drop)
+      Bus -> RoboClaw:             14 AWG silicone
+      Bus -> headlight switch:     20 AWG solder joints ok
+    Many bags of "12-16V robot wire" are undersized.  Measure
+    peak, not nominal.
+
+--------------------------------------------------------------
+21. ***ROBOCLAW CURRENT LIMIT DERIVES FROM MOTOR STALL, NOT
+    DRIVER HARDWARE MAX***  (2026.05.13 - the hairball lesson,
+    hard version)
+    Formula:
+      continuous ~= stall / 3
+      limit      = continuous * 1.5
+    Pololu #4753: stall 5.5A -> continuous 1.83A -> limit 2.7A.
+    Setting the RoboClaw's per-channel limit near its 7A
+    hardware max (6.5A on Stormy pre-fix) lets a stalled motor
+    cook itself before the OC trip fires.  This IS Flag 11 -
+    the motor burnout of 2026.05.08.  See also item 40 (The
+    Hairball Lesson).
+
+--------------------------------------------------------------
+22. ***COMPLETE POWER PROTECTION IS FUSE + STPS DIODE + SHUNT
+    REGULATOR - ALL THREE, NOT ANY ONE***  (2025.12.07 install
+    of 3779; external-resistor guidance added 2026.07.26)
+    Panel-mount slow-blow fuse: cuts fault currents.
+    STPS10L25D across the fuse: covers the fuse-blown case when
+    the shunt loses its bus reference.
+    Pololu 3779 (17.0V trip on 4S LiPo, ONBOARD adjustable pot
+    sets the trip threshold; NO external shunt resistor on
+    Stormy): dumps regen energy in NORMAL operation.
+    STPS and 3779 are COMPLEMENTARY.  Do not skip either.
+
+    When to add the OPTIONAL external shunt resistor:
+      The onboard adjustable trims the TRIP THRESHOLD (bus
+      voltage at which the MOSFET turns on).  The external
+      resistor (typical 1 ohm, 25 W wirewound) is where the
+      regenerative energy is actually DISSIPATED AS HEAT.
+      Without one, the MOSFET dumps current through its own
+      on-resistance and heats up.  That is fine for BRIEF
+      regen spikes (typical light-robot indoor decel,
+      milliseconds at a time).  Add the external resistor
+      only if you have SUSTAINED regen - heavy robot, long
+      high-speed decels, or you find the shunt MOSFET running
+      hot to the touch after a run.  On Stormy at 3.2 kg and
+      typical indoor speeds, none needed.  Rule: install the
+      external resistor only when the shunt MOSFET gets hot
+      in normal use.
+
+--------------------------------------------------------------
+23. ***REVERSED-POLARITY SANITY TEST***  (2026.03.21)
+    After adding an inline diode in a battery lead, VERIFY
+    orientation before turning power on: REMOVE the fuse; try
+    to power up.  If power flows anyway, the diode is backward.
+    If no power flows, replace fuse and proceed normally.
+
+--------------------------------------------------------------
+24. ***52Pi HAT SUPERSEDES BUCK CONVERTER FOR PI 5 CLEAN
+    POWER***  (2025.11.30)
+    The 52Pi PD Power Extension Board (Amazon B0CYPRDY9Q)
+    accepts 12-24V input, delivers 5.1V/5A to the Pi 5's GPIO
+    header, and has always-on + auto-startup + manual power
+    control.  Cleaner than "buck converter into USB-C jack" -
+    dedicated regulator + short traces to the header pins.
+
+--------------------------------------------------------------
+25. ***KEEP A SPARE POWERED USB HUB - FAILURE MODE IS
+    SILENT***  (2026.06.15)
+    USB hub port 2 died with no warning; devices plugged in
+    simply didn't enumerate, other ports worked.  Replacement
+    turnaround from Amazon is ~2 days.  Keep at least one spare
+    on hand.
+
+
+================================================================
+PART III - MECHANICAL
+================================================================
+
+--------------------------------------------------------------
+26. ***THE HAIRBALL LESSON***  (2026.05.08 - Flag 11 realized)
+    Domestic-floor robots live in a hairball habitat.  Hair
+    winds around drive shafts and caster wheels.  A wound-up
+    drive shaft raises the effective load beyond the motor's
+    continuous rating.  If your OC limit is too permissive
+    (item 21), you cook the winding.  RULES:
+      - Check drive shafts and caster wheels for hair
+        BEFORE EVERY drive session.
+      - "Take a lesson from your vacuum cleaner and check
+        for hairballs." (James, verbatim)
+      - Combine with item 21 (proper current limit) so a
+        detected hair-jam trips OC before winding damage.
+
+--------------------------------------------------------------
+27. ***CAST ACRYLIC ONLY FOR LASER CUTTING - NEVER
+    EXTRUDED***  (2026.01.10)
+    Extruded acrylic (cheap Amazon) MELTS at the laser kerf
+    into a beaded gummy mess.  Cast acrylic vaporizes cleanly.
+    Suppliers must LIST "cast acrylic" explicitly in writing.
+    FabLab / Roland's stock is 1/4" cast, works reliably; 3/8"
+    is marginal for laser but usable at low speeds; extruded
+    is never usable.
+
+--------------------------------------------------------------
+28. ***BELT-DRIVEN LIDAR IS A WEAR ITEM***  (2025.11.20)
+    The YDLIDAR X2's drive belt frayed and broke on Stormy
+    around 2025.10; OEM replacement belt was unobtainable; an
+    O-ring jury-rig failed within weeks.  Direct-drive LiDARs
+    (Youyeetoo FHL-LD19) have no drive-train to wear out.  For
+    a robot that lives indoors and gets driven a lot, prefer
+    direct-drive LiDAR from the start.
+
+--------------------------------------------------------------
+29. ***OFFICIAL POWERWERKS POWERPOLE CRIMPER IS WORTH THE
+    PRICE***  (2026.01.11)
+    Alternative crimpers, generic pliers, spade connectors -
+    all fussy and unreliable at power-bus currents.  Buy the
+    real Powerwerks tool once; use it for the life of the
+    robot.
+
+--------------------------------------------------------------
+30. ***HAND-TAPPING 4-40 IN 1/4" CAST ACRYLIC WORKS FINE***
+    (2026.01.11)
+    Standard hand tap in a pilot-drilled hole; go slow, back
+    out every half-turn.  Small drill press adequate for edge-
+    drilling.  You don't need a CNC drill unless you have
+    dozens.
+
+--------------------------------------------------------------
+31. ***BNO085 BREAKOUT SDA / SCL LABELS MAY BE SWAPPED***
+    (2026.01.16)
+    If `i2cdetect -y 1` shows no device at 0x4A after wiring
+    per the silk-screen, try swapping the SDA and SCL physical
+    wires.  Not a datasheet-visible fact; discovered by
+    experiment.
+
+--------------------------------------------------------------
+32. ***PLACE THE IMU AS FAR AS POSSIBLE FROM MOTORS AND
+    WIRES***  (Sergei Grichine 2026.01.13, verbatim;
+    scope-qualified 2026.07.26)
+    "Placing IMU in between the wheels/motors on a real robot
+     is a bad idea.  I place IMUs as far as possible from other
+     components, wires - everything.  I also check mag field
+     with a real compass - the arrow should point North when
+     the robot turns."
+    On Stormy the BNO085 lives on the OAK-D front-panel deck,
+    NOT between the drive motors where the BNO055 originally
+    was.
+
+    Scope note (James 2026.07.26):  "This is only relevant
+    if the magnetometer/compass on the IMU is being used,
+    which in general it should not."  With the magnetometer
+    OFF (as on Stormy - game rotation vector mode), the
+    compass-check portion of Sergei's rule does not apply,
+    and the placement rule matters less than it does with
+    the mag on.  Keep the physical distance as a general
+    good practice (accels/gyros benefit from reduced motor
+    vibration coupling) but do NOT treat this as a mag-
+    interference workaround when the mag is disabled.
+
+--------------------------------------------------------------
+33. ***USB-B PORTS FAIL SILENTLY - KEEP A SPARE HUB***
+    (2026.06.15)  See item 25.
+
+
+================================================================
+PART IV - SOFTWARE & CONFIG TRAPS
+================================================================
+
+--------------------------------------------------------------
+34. ***PI 5 CONFIG.TXT REQUIRES THE `[pi5]` SECTION HEADER***
+    (2025.03.05 - Michael Wimble's fix, saved days of Grok
+    frustration)
+    Overlays placed under `[all]` in `/boot/firmware/config.txt`
+    are silently ignored on Pi 5.  You MUST use:
+        [pi5]
+        dtoverlay=uart0-pi5
+        enable_uart=1
+    Grok tried the same overlay under `[all]` for weeks with no
+    effect.  This is the single most important Pi 5 quirk to
+    know.
+
+--------------------------------------------------------------
+35. ***NAV2 FOOTPRINT MUST BE AN INLINE STRING, NOT A YAML
+    LIST***  (2025.10.10)
+    WRONG (parse error "Sequences cannot be key"):
+        footprint:
+          - [-0.24, -0.14]
+          - [-0.24,  0.14]
+          - [ 0.10,  0.14]
+          - [ 0.10, -0.14]
+    RIGHT (inline string):
+        footprint: "[[-0.24, -0.14], [-0.24, 0.14],
+                     [0.10, 0.14], [0.10, -0.14]]"
+    Apply to BOTH local_costmap and global_costmap.
+
+--------------------------------------------------------------
+36. ***`geometry_msgs/Twist` vs `TwistStamped` IS A SILENT
+    TYPE-HASH MISMATCH***  (bit Stormy 2026.03.14, 2026.03.16,
+    2026.06.20 - THREE times)
+    Nav2 in Jazzy publishes TwistStamped.  If your motor driver
+    subscribes to Twist, twist_mux quietly bridges nothing.
+    Symptom: joystick + twist_mux + driver all "running", motors
+    don't move, `ros2 topic info -v /diff_cont/cmd_vel` shows
+    two message types on the topic.
+    Fix everywhere in the chain:
+      - `teleop_twist_joy`: param `publish_stamped_twist: 'true'`
+        (LOWERCASE - see item 37)
+      - `twist_mux`: `use_stamped: True` in both launch args
+        and node params
+      - motor driver subscribes to `TwistStamped`
+    On the Wimble roboclaw_driver fork, this is a 4-edit fix
+    in the .hpp + .cpp.
+
+--------------------------------------------------------------
+37. ***YAML `'True'` (CAPITAL T IN A STRING) IS SILENTLY
+    `False`***  (2026.03.14)
+    Symptom: `publish_stamped_twist: 'True'` in a launch file
+    ARG behaves as if False was passed.  Cause: ROS parses the
+    string-with-capital-T as the literal string, which then
+    fails the bool coercion.
+    Rule: always use lowercase `'true'` or `'false'` inside
+    quotes.  Or drop quotes entirely for boolean scalars in
+    YAML - true/false without quotes work correctly.
+
+--------------------------------------------------------------
+38. ***ROS 2 APT KEYRING MUST BE BINARY .gpg, NOT ASCII
+    ARMOR***  (2026.06.08 - post-disaster rebuild)
+    Piping `ros.asc` (ASCII PGP block) into a `.gpg` file
+    triggers:
+        E: Conflicting values set for option Signed-By ...
+        != -----BEGIN PGP PUBLIC KEY BLOCK-----
+    Correct recipe:
+        sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc \
+             | sudo gpg --no-default-keyring \
+                        --keyring /etc/apt/trusted.gpg.d/tmp.gpg --import
+        sudo gpg --no-default-keyring \
+                 --keyring /etc/apt/trusted.gpg.d/tmp.gpg --export \
+             | sudo tee /etc/apt/trusted.gpg.d/ros-archive-keyring.gpg > /dev/null
+        sudo rm /etc/apt/trusted.gpg.d/tmp.gpg
+    In short: re-export ASCII -> binary via `gpg --import | gpg
+    --export | tee`.
+
+--------------------------------------------------------------
+39. ***`sudo` DOES NOT EXTEND PAST A PIPE***  (2025.11.23)
+    WRONG:
+        sudo dd if=/dev/nvme0n1 bs=4M | gzip -1 > /media/.../file.gz
+                                                     ^ Permission denied
+                                                       (shell redirect
+                                                        runs as your user)
+    RIGHT:
+        sudo sh -c 'dd if=... | gzip -1 > /path/file.gz'
+      or:
+        sudo dd if=... | gzip -1 | sudo tee /path/file.gz > /dev/null
+    Same principle for `>>`, `<`, `< <(...)`.
+
+--------------------------------------------------------------
+40. ***YOUR ON-DISK CONFIG YAML IS NOT WHAT THE RUNNING NODE
+    SEES***  (2026.01.19)
+    Symptom: edit `~/robot_ws/src/.../foo.yaml`, relaunch,
+    behavior unchanged.  Cause: the running node loads from
+    `~/robot_ws/install/.../share/.../foo.yaml`, which is the
+    COPY produced by `colcon build`.  Fix: rebuild after every
+    config edit:
+        cd ~/robot_ws && colcon build --packages-select articubot_one
+    Or use `--symlink-install` so future edits pick up
+    immediately (but even then, ONLY for source files that are
+    symlinked, not yaml files installed via `install(FILES ...)`).
+
+--------------------------------------------------------------
+41. ***OLD WORKSPACE STILL-SOURCED-IN-BASHRC TRAP***
+    (2026.03.09)
+    Symptom: "why is my new driver behaviour identical to the
+    old one?"  Cause: `.bashrc` still has
+    `source ~/ros_ws/install/setup.bash` BEFORE
+    `source ~/robot_ws/install/setup.bash`.  First-sourced
+    package overlays win.
+    Fix: `mv ~/ros_ws ~/orig_ros_ws` (or delete), remove all
+    old-workspace source lines from `.bashrc`, `source ~/.bashrc`
+    or open a fresh terminal.
+
+--------------------------------------------------------------
+42. ***YAML PARAMETER NESTING - TOP-LEVEL VS `publish:`
+    SECTION***  (2026.03.14, IMU flag)
+    Sergei's `bno08x_ros2_driver` reads
+    `imu.use_magnetometer` from the TOP LEVEL of the params
+    yaml.  If you place it under `publish.imu.use_magnetometer`,
+    the driver silently ignores it and defaults to
+    magnetic-north absolute yaw - which produces the "IMU axes
+    reset differently on every boot indoors" symptom.
+    Rule: check the driver's PARAM DECLARATIONS in its .cpp or
+    .py, not the yaml the user manual happens to show.
+
+--------------------------------------------------------------
+43. ***YAML DRIVER PARAM PASSING BUG - RAW FILE INTO
+    Node(parameters=...) IS NESTED, NOT FLAT***  (2025.08 GPT-5
+    diagnosis)
+    Passing `parameters=['/path/x.yaml']` to a `Node(...)`
+    causes ROS to treat the file's KEYS as nested under
+    `node_name.ros__parameters.X` instead of the flat `X` the
+    driver expects.  Driver falls back to defaults silently.
+    Fix EITHER: use `IncludeLaunchDescription(
+    PythonLaunchDescriptionSource(driver_launch.py))` so the
+    driver's own launch handles yaml properly,
+    OR parse the yaml yourself:
+        with open(path) as f:
+            data = yaml.safe_load(f)['node_name']['ros__parameters']
+
+--------------------------------------------------------------
+44. ***ANGLE CONVENTION FOR loadgraph AND OTHER POSE ARGS***
+    (2026.03.30)
+    Theta is COUNTERCLOCKWISE about +Z, measured from +X (map
+    East) toward +Y (map North).  Not clockwise-from-North like
+    a compass.  Example poses that work:
+      dock in study:                 0.0   0.0    0.0
+      bedroom door facing south:    19.4  -1.05  +pi/2
+      hallway facing west:           X     Y     +pi
+
+--------------------------------------------------------------
+45. ***YAML `int` vs `double` IS A HARD-ERROR TYPE MISMATCH***
+    Setting `1` where the driver declared `float` causes a
+    parameter-load failure at node start.  Write `1.0`.  ROS
+    2's type coercion is strict.
+
+--------------------------------------------------------------
+46. ***Ctrl-C-RESISTANT LAUNCH***  (recurring)
+    Occasionally `ros2 launch` traps SIGINT and refuses to die.
+    `htop` -> find the ros2 python launcher -> `kill -9 <pid>`.
+    Cleanup rest via `pkill -9 -f articubot_one` if children
+    survive.  See also item 53 (zombie cleanup drill).
+
+
+================================================================
+PART V - ROS 2 OPERATIONS
+================================================================
+
+--------------------------------------------------------------
+47. ***THE ROS 2 ZOMBIE-PROCESS CLEANUP DRILL***  (2026.03.02)
+    Symptom: `ros2 topic list` still shows topics after every
+    launch is dead.  `ros2 topic info -v /cmd_vel_nav` shows
+    7 publishers all called `behavior_server`.  Multiple
+    `twist_mux`, `robot_state_publisher`, `teleop_twist_joy`
+    processes in `ps aux`.
+    Cause: previous launches left orphan child processes; the
+    ros2 daemon caches the stale discovery graph.
+    Fix:
+      1. Kill EVERY orphan process:
+           ps aux | grep -E \
+             "cmd_vel|robot_state|twist_mux|teleop|nav2|slam"
+           kill -9 <PID1> <PID2> ...
+      2. Kill the ros2 daemon (auto-restarts):
+           ps aux | grep ros2-daemon
+           kill -9 <daemon-PID>
+      3. Verify empty:
+           ros2 node list
+           ros2 topic list
+    Manual: run this whenever a launch quits abnormally
+    (crash, SSH drop, Ctrl-C failure).
+
+--------------------------------------------------------------
+48. ***`ros2 topic list` AUTO-RESTARTS THE DAEMON***
+    (2026.03.02)
+    After you kill it, the next `ros2 topic list` will spawn
+    a new daemon.  It briefly re-populates from cache before
+    reflecting the real graph.  Wait 2-3 seconds after the
+    kill for a truly clean list.
+
+--------------------------------------------------------------
+49. ***LATCHED TOPICS REQUIRE MATCHING QoS***  (2026.06.20 -
+    keepout mask)
+    Symptom: subscribed to `/map` or `/keepout_filter_mask` in
+    RViz, no data displayed even though publisher is running.
+    Cause: RViz defaults to Best-Effort Reliability, but
+    latched topics use Reliable + Transient-Local Durability.
+    Best-Effort subscribers DISCARD the latched sample during
+    the DDS handshake.
+    Fix: in the RViz display Properties, set:
+      Reliability = Reliable
+      Durability  = Transient Local
+    Same rule applies to any latched topic (`/map`,
+    `/robot_description`, keepout filters, static map servers).
+
+--------------------------------------------------------------
+50. ***NAV2 WAYPOINT FOLLOWER SHORTCUTS BETWEEN POSES***
+    (2026.03.14)
+    Both `waypoint_follower` and `navigate_through_poses` invoke
+    the global planner INDEPENDENTLY between waypoints.  They
+    can route through obstacles or through corridors you did
+    NOT intend if a "shorter" path exists.
+    Workaround: place tighter waypoints (~0.3 m apart) around
+    the corners you want honored.  No parameter fixes this;
+    it's a Nav2 design choice.
+
+--------------------------------------------------------------
+51. ***`use_sim_time=true` ON REAL HARDWARE IS ALWAYS WRONG***
+    (2025.10.21)
+    Symptom: "Message Filter dropping message: frame 'X' at
+    time Y for reason 'the timestamp on the message is earlier
+    than all the data in the transform cache'".
+    First check: grep every launch file for `use_sim_time`.
+    Any node with `use_sim_time: true` on a real robot publishes
+    sim-clock timestamps that don't match the wall-clock TF
+    stream.  Set to false everywhere.
+
+--------------------------------------------------------------
+52. ***CROSS-HOST TIME SYNC IS NECESSARY, NOT SUFFICIENT***
+    (2025.10.24 - Pito Salas's `handy net_latency` tool)
+    On multi-machine ROS setups, install `chrony` or
+    `systemd-timesyncd` on ALL machines.  Then verify skew with
+    Pito Salas's tool
+    (github.com/Boston-Robot-Hackers/handy):
+        ros2 run handy net_latency node1 node2
+        ros2 run handy net_latency node2 node1
+    Skew under ~10 ms is fine.  Skew of 100+ ms will produce
+    the same "timestamp earlier than cache" errors as sim-time
+    contamination.
+
+--------------------------------------------------------------
+53. ***DDS IMPLEMENTATION MUST MATCH ACROSS ALL MACHINES***
+    (2025.10.24)
+    Set `RMW_IMPLEMENTATION` identically on every host:
+        export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+    Mismatched RMWs on the same ROS_DOMAIN sometimes work by
+    accident and sometimes silently drop discovery.  Ship
+    everyone on cyclonedds; put the export in `.bashrc` on
+    every machine.
+
+--------------------------------------------------------------
+54. ***RELIABILITY QoS OF /scan IS BEST_EFFORT ON YDLIDAR
+    AND LD19***  (2025.10 recurring)
+    Any subscriber that requests RELIABLE for `/scan` (RViz2
+    default, some Nav2 nodes) will complain and get no data.
+    Configure the subscribers to Best-Effort for LiDAR scan
+    topics.
+
+--------------------------------------------------------------
+55. ***BRLTTY BLOCKS CP210x AND OTHER CH-BASED USB SERIAL
+    ADAPTERS***  (Ubuntu 24.04, ~2025.04)
+    Symptom: `/dev/ttyUSB0` never appears when you plug in a
+    CP2102 dongle.  Cause: BRLTTY (accessibility service for
+    Braille displays) claims the device on Ubuntu 24.04.
+    Fix:
+        sudo apt remove brltty
+    You never wanted it anyway.
+
+
+================================================================
+PART VI - NAV2, SLAM, AMCL
+================================================================
+
+--------------------------------------------------------------
+56. ***SLAM TOOLBOX ONLY CORRECTS ON LOOP CLOSURE - DRIVE
+    BACK THROUGH***  (2026.04.17 - Claude Opus 4.6 lesson)
+    SLAM drift silently compounds as you drive AWAY from
+    known geometry.  It only snaps back when the scan matcher
+    recognizes a previously-seen area.
+    Workflow rule: after exploring a new far room, DRIVE BACK
+    through areas you already scanned before `savegraph`.  In
+    RViz2 you will literally see the map snap as loop closure
+    fires; that snap is your signal to save immediately.
+
+--------------------------------------------------------------
+57. ***INFLATION RADIUS MUST BE >= CIRCUMSCRIBED RADIUS***
+    (2025.08.17)
+    Nav2 spits a warning if the inflation halo is smaller than
+    the robot's circumscribed radius (worst-case fit-in-a-circle
+    distance).  For Stormy: `inflation_radius: 0.20` combined
+    with `robot_radius: 0.18` was the sweet spot in tight
+    doorways; too much inflation and doorways close, too
+    little and Nav2 refuses to plan.
+
+--------------------------------------------------------------
+58. ***ROBOT'S WORST-CASE DIAGONAL IS NOT THE BEST RADIUS
+    FOR A DIAMOND-SHAPED ROBOT***  (2026.04.04)
+    Stormy's rectangle bound is 28 x 36 cm, so worst-case radius
+    is 22 cm.  But the robot is DIAMOND-shaped in plan view,
+    tapering to 6 cm at the caster and 12 cm at the OAK-D nose.
+    Half-length (18 cm) is a better enclosing radius, and gives
+    Nav2 the ~8 cm of extra clearance it needs to pass through
+    2-ft doorways.  Later replaced by a proper polygon footprint
+    (item 59).
+
+--------------------------------------------------------------
+59. ***PROPER POLYGON FOOTPRINT > CIRCLE RADIUS***
+    (2026.05.02)
+    For non-round robots, a polygon footprint frees Nav2 to
+    consider approach angle.  Stormy's 8-vertex stingray hull:
+        footprint: "[[0.123, 0.06], [0.06, 0.145],
+                     [-0.065, 0.145], [-0.237, 0.03],
+                     [-0.237, -0.03], [-0.065, -0.145],
+                     [0.06, -0.145], [0.123, -0.06]]"
+    Set `MPPI.CostCritic.consider_footprint: true`.  DO NOT
+    combine with `footprint_padding` non-zero at the same time
+    (2026.05.18 - made Stormy too shy to leave dock).
+
+--------------------------------------------------------------
+60. ***NAV2 HEADING OVERSHOOT FIX - THE COMPLETE RECIPE***
+    (2026.04.12)
+    Symptom: Nav2 goals arrive 20-25 deg past target heading
+    after MPPI approach.
+    Fix requires ALL THREE:
+      (a) EKF absolute yaw ON (was velocity-only):
+            imu0_config row 2 [roll, pitch, YAW]:
+              true, true, TRUE   (was false)
+          EKF yaw covariance drops from ~109 rad^2 to ~0.002.
+      (b) `MPPI.wz_max: 0.25` (was 0.5) - less angular
+          momentum overshoots less at goal.
+      (c) `MPPI.GoalAngleCritic.threshold_to_consider: 0.15`
+          (was 0.5 m) - controller rotates IN PLACE at goal
+          instead of during approach.
+    Result: heading error 2-5 deg.
+
+--------------------------------------------------------------
+61. ***OAK-D POINT CLOUD AS NAV2 OBSTACLE SOURCE - HEIGHT
+    BAND***  (2026.05.02; persistence guidance added
+    2026.07.26)
+    LiDAR at 15 cm misses low obstacles (coffee-table crossbars,
+    shoes, dog).  Feed `/oak/points` to Nav2 with height filter:
+        oakd:
+          data_type: PointCloud2
+          topic: /oak/points
+          min_height: 0.02
+          max_height: 0.22
+          expected_update_rate: 10.0
+          marking: true
+          clearing: false
+    2 cm bottom lets rugs and floor level pass; 22 cm top
+    stops just below the LiDAR plane.  Below-LiDAR obstacles
+    now appear in the local costmap.
+
+    Bogus persistent obstacles - what to try first:
+      If the OAK-D marks obstacles that never clear even
+      after the robot has driven past, do NOT immediately
+      flip `clearing: true`.  On a depth camera,
+      `clearing: true` raycasts through each depth pixel
+      to erase what it does not currently see - but
+      occasional missing depth pixels (glare, dark
+      surfaces, motion blur) become false "clear" rays that
+      wipe out REAL obstacles behind them.
+      Try TIME-BASED expiration first: add
+          observation_persistence: 1.5
+      to the oakd block.  Any point not re-observed within
+      1.5 s ages out of the costmap; bogus one-frame noise
+      drops off but real obstacles get refreshed each
+      cycle and stay marked.  Only if that is not enough
+      should you flip `clearing: true` and accept the
+      false-negative flicker as the price of raycast-based
+      clearing.
+
+--------------------------------------------------------------
+62. ***AMCL vs SLAM MODE - PICK THE RIGHT ONE***  (2026.04.30)
+    SLAM Toolbox in mapping mode:  BUILDS and updates map.
+    SLAM Toolbox in localization:  BUILDS ON existing map,
+                                    can add new geometry.
+    AMCL + map_server:              READ-ONLY on saved map;
+                                    lightest, most stable.
+    Production nav on a stable map: use AMCL for lightest CPU
+    and most stable behavior.  Only use SLAM localization mode
+    when you expect NEW geometry to be added mid-run.
+
+--------------------------------------------------------------
+63. ***SLAM TOOLBOX PARAMS FOR PI 5 IN TIGHT SPACES***
+    (2026.03.29)
+    Defaults choke the scan matcher on 4-core ARM.  Reduce
+    load without losing quality:
+        throttle_scans:                   1 -> 3
+        max_laser_range:                12.0 -> 8.0
+        do_loop_closing:              false -> true
+        correlation_search_space_dimension:
+                                       0.75 -> 0.5
+        num_threads:                     4 (explicit; Pi 5)
+    When SLAM stalls, TF stops publishing, costmap fills with
+    stale-timestamp scans, everything else cascades.
+
+--------------------------------------------------------------
+64. ***AMCL LOCALIZATION-LOSS RECOVERY - MORE PARTICLES,
+    MORE BEAMS, TIGHTER UPDATES***  (2026.03.14)
+    Tuning that stopped delocalization behind the kitchen
+    island (limited unique laser features):
+        max_particles:            2000 -> 5000
+        laser_max_beams:            60 -> 120
+        laser_likelihood_max_dist: 2.0 -> 4.0
+        alpha1..alpha4:            0.2 -> 0.1
+        update_min_d:              0.1 -> 0.05
+        update_min_a:              0.1 -> 0.05
+    Extra CPU cost is real but worth it in featureless areas.
+
+--------------------------------------------------------------
+65. ***`allow_unknown` AND `track_unknown_space` INTERACT
+    IN NON-OBVIOUS WAYS***  (2026.04.04)
+    Common patterns:
+      allow=true,  track=true:   planner routes THROUGH
+                                 unknown space eagerly.
+                                 Bad for hybrid maps.
+      allow=false, track=true:   planner refuses unknown
+                                 areas.  Doorways narrow to
+                                 known-free pixels only.
+                                 Best for mature maps.
+      allow=false, track=false:  unknown treated as FREE.
+                                 Planner ignores the
+                                 unknown/free distinction.
+                                 Only obstacles block.  Good
+                                 for blueprint-based maps.
+
+--------------------------------------------------------------
+66. ***NAV2 "TIMESTAMP EARLIER THAN TRANSFORM CACHE" - THE
+    FULL DIAGNOSTIC CHAIN***  (2025.10.19)
+    Check in this order:
+      1. Any node with `use_sim_time: true` on real hardware
+         (item 51)
+      2. Multi-machine time skew via Pito Salas's tool
+         (item 52)
+      3. DDS implementation mismatch (item 53)
+      4. IMU driver hangs / quaternion-norm-zero spikes cause
+         TF publishers to stall - use Sergei's smbus2 fork
+         of BNO055/BNO085 driver
+
+--------------------------------------------------------------
+67. ***SLAM TOOLBOX START-DELAY IS NORMAL, NOT BROKEN***
+    (Sergei 2026.01.02)
+    "Localizers run with 18 s delay; Nav2 with 25 s delay.
+     Wait ~40 s after launch before expecting a map or trying
+     to drive."  Not a bug; a settle time.  Don't debug it -
+     wait for it.
+
+
+================================================================
+PART VII - PERCEPTION (LIDAR, CAMERA, URDF, SIM)
+================================================================
+
+--------------------------------------------------------------
+68. ***OAK-D IMU IS PUBLISHED BY THE DRIVER, DO NOT ALSO
+    DECLARE IN URDF***  (2025.12.14; scope note added
+    2026.07.26)
+    `depthai_ros_driver` publishes `oak_imu_frame` as a
+    STATIC TF from the camera's factory calibration EEPROM
+    (translation (0, -0.015, -0.014) m relative to camera
+    housing origin).  Declaring the same frame in URDF
+    creates a conflicting TF and confuses RViz2.  Just don't.
+
+    Scope note (James 2026.07.26):  On Stormy the OAK-D IMU
+    was TRIED as the robot's primary IMU source and
+    ABANDONED for unclear reasons.  BNO085 is authoritative
+    for EKF fusion.  The advice above still applies to
+    anyone who wants to enable the OAK-D IMU as an
+    auxiliary source (the driver publishes the frame
+    regardless), but do not read this item as an endorsement
+    of the OAK-D IMU as a primary IMU choice on this
+    class of robot.
+
+--------------------------------------------------------------
+69. ***`parent_frame:=<urdf_frame>` CONNECTS DEPTHAI TF TREE
+    TO ROBOT***  (2025.12.14)
+    In DepthAI camera launch args:
+      parent_frame:=oakd_front_panel
+    Then the URDF joint `oakd_joint -> oakd_front_panel`
+    supplies physical position, and the driver's internal
+    `oak` frames chain under it correctly.  Set
+    `cam_pos_x/y/z=0.0` in the launch (URDF handles position).
+
+--------------------------------------------------------------
+70. ***GAZEBO HARMONIC (gz-sim) DOES NOT RESOLVE `package://`
+    MESH URIs***  (2026.03.07)
+    Symptom: mesh renders in RViz but not in Gazebo.
+    RIGHT:
+      <mesh filename="file://$(find articubot_one)/assets/meshes/OAK-D.dae"/>
+    WRONG:
+      <mesh filename="package://articubot_one/assets/meshes/OAK-D.dae"/>
+    RViz2 uses ROS resource manager (handles package://); gz-sim
+    doesn't.  Use file:// everywhere for cross-tool compatibility.
+
+--------------------------------------------------------------
+71. ***GAZEBO CLASSIC CAMERA PLUGIN IS SILENTLY IGNORED
+    UNDER GZ HARMONIC***  (2026.03.07)
+    Symptom: camera in Gazebo renders internally but publishes
+    no ROS topic.  No error, just silence.
+    Fix: replace the `libgazebo_ros_camera.so` plugin block
+    with GZ Sim NATIVE format:
+        <sensor name='oakd_rgb' type='camera'>
+            <always_on>1</always_on>
+            <update_rate>30</update_rate>
+            <camera>
+                <horizontal_fov>1.2566</horizontal_fov>
+                <image><format>RGB_INT8</format></image>
+            </camera>
+            <topic>gz_camera</topic>
+        </sensor>
+    Then bridge `gz_camera -> /camera` in `gz_ros_bridge.yaml`.
+
+--------------------------------------------------------------
+72. ***RVIZ OGRE COLLADA LOADER TAKES MESH MATERIAL
+    OWNERSHIP***  (2026.03.07)
+    RViz2 ignores URDF `<material>` tags on `<visual>` blocks
+    that use .dae meshes.  The material must be embedded in
+    the DAE itself.  Add `<library_effects>` +
+    `<library_materials>` blocks defining a phong material, and
+    bind via `<bind_material>` inside `<instance_geometry>` in
+    the visual scene.  Gazebo needs a separate
+    `<material>Gazebo/Color</material>` inside the visual.
+
+--------------------------------------------------------------
+73. ***RVIZ MULTI-VISUAL MATERIAL BUG - ONE LINK PER
+    COLOR***  (2026.06.29)
+    Symptom: a single `<link>` with multiple `<visual>` blocks
+    and DIFFERENT `<material>` tags renders ALL visuals with
+    the FIRST material.  Per-visual material tags after the
+    first are silently ignored, even with unique names and
+    inline rgba.
+    Fix: extract each differently-colored visual into its OWN
+    `<link>` connected via a FIXED JOINT.  Fixed joints
+    propagate rotation, so multi-link children of a continuous
+    joint (a wheel) still spin correctly.
+    Applied on Stormy: speaker (body + cone), wheels (tire +
+    hub + spoke marker), E-stop (skirt + shaft + button).
+
+--------------------------------------------------------------
+74. ***LDLIDAR X-AXIS IS 90 DEG FROM WHAT YOU THINK***
+    (2025.12.19)
+    LDROBOT's "forward" convention is 90 deg to the right of
+    what a robot builder naturally calls "front".  Rotate the
+    static-TF in `ldlidar_ros2/launch/ld19.launch.py`.  For -90
+    deg yaw:
+        arguments=['0','0','0.18',
+                   '0','0','-0.7071068','0.7071068',
+                   'base_link','base_laser']
+    If wrong direction, flip qz sign: '+0.7071068' for +90 deg.
+
+--------------------------------------------------------------
+75. ***LDLIDAR PHYSICAL LASER IS 0.0015 m BELOW CYLINDER
+    CENTER***  (2025.12.19)
+    Introduce a separate `base_laser` link in the xacro
+    sitting 1.5 mm BELOW the LD19 cylinder's top.  Otherwise
+    the scan-plane visualization in RViz2 lands 1.5 mm too high
+    and appears to float above the LiDAR body.
+
+--------------------------------------------------------------
+76. ***DEPTHAI v3 PACKAGE RENAME CASCADE***  (2026.06.15)
+    On ROS Jazzy after ~2026 apt updates, all depthai package
+    names got a `_v3` suffix:
+      depthai_ros_driver         -> depthai_ros_driver_v3
+      depthai_descriptions       -> depthai_descriptions_v3
+      depthai_examples           -> depthai_examples_v3
+      plugin "Camera"            -> plugin "Driver"
+      config file "camera.yaml"  -> "driver.yaml"
+      yaml namespace `camera.*:` -> `driver.*:`
+    Apply to any pre-2026 launch or yaml.  Symptom: `[launch]
+    package 'depthai_ros_driver' not found`.
+
+
+================================================================
+PART VIII - NETWORKING & MULTI-HOST ROS 2
+================================================================
+
+--------------------------------------------------------------
+77. ***PI 5 ONBOARD 2.4 GHz WIFI IS BROKEN BY DESIGN***
+    (2026.06.27, verbatim after a wasted evening)
+    "The Raspberry Pi 5 has a well-documented interference
+     problem on 2.4 GHz.  Might have brought that up at the
+     start and saved us this rabbit hole!"
+    Cause: CPU / USB3 / HDMI / PMIC noise coupling into the
+    Pi's small PCB antenna.  5 GHz is largely immune; 2.4 GHz
+    can't reliably complete authentication.  Symptoms:
+    `wpa_supplicant status_code=16` (auth timeout) despite
+    strong signal on scans; phones connect to the same AP
+    with no issue.
+    Fix: stay on 5 GHz for the internal radio.  If 2.4 GHz
+    range is needed (through-wall), use an external USB dongle
+    with its own antenna (e.g. Realtek RTL8812BU).
+
+--------------------------------------------------------------
+78. ***TP-LINK DECO MESH DROPS MULTICAST WIRED <-> WIRELESS***
+    (2026.07.10, keystone)
+    Symptom: `ping` between two hosts works perfectly, but
+    ROS 2 `topic list` on one shows 5 topics (defaults) instead
+    of the other's 135.  `Frame [map] does not exist` in RViz.
+    Cause: TP-Link Deco firmware drops multicast between wired
+    and wireless clients (and between mesh nodes).  DDS SPDP
+    heartbeats never arrive.  Unicast (ping, SSH, TCP) works
+    the whole time, masking root cause.
+    Fix: switch CycloneDDS to UNICAST-ONLY discovery with an
+    explicit peer list.  See item 79.
+
+--------------------------------------------------------------
+79. ***CYCLONEDDS UNICAST-PEER-LIST CONFIG (THE FIX)***
+    (2026.07.10 - THE canonical fix for item 78)
+    On BOTH hosts, save to `~/cyclonedds.xml`:
+        <CycloneDDS>
+          <Domain>
+            <General>
+              <Interfaces>
+                <NetworkInterface name="<IFACE>" priority="10"/>
+              </Interfaces>
+              <AllowMulticast>false</AllowMulticast>
+            </General>
+            <Discovery>
+              <ParticipantIndex>auto</ParticipantIndex>
+              <Peers>
+                <Peer address="192.168.68.66"/>   <!-- Stingray -->
+                <Peer address="192.168.68.99"/>   <!-- LinuxBox -->
+              </Peers>
+            </Discovery>
+          </Domain>
+        </CycloneDDS>
+    Then in `.bashrc`:
+        export CYCLONEDDS_URI=file://$HOME/cyclonedds.xml
+    Verify: `echo $CYCLONEDDS_URI` prints the path;
+    `ros2 daemon stop && ros2 daemon start; ros2 topic list | wc -l`
+    now shows all topics.  Add every ROS host's IP to the
+    `<Peers>` list on every host.
+
+--------------------------------------------------------------
+80. ***DUAL-HOMED HOST + DDS = SILENT INTERFACE BIND***
+    (2026.07.10)
+    If a machine has two IPs on the same subnet (ethernet +
+    WiFi both up on the same /22), CycloneDDS silently binds
+    multicast to ONE of them and the other side may never
+    see the packets.  Fix: either disable the unused
+    interface, OR use unicast peer list (item 79) which
+    bypasses the problem entirely.
+
+--------------------------------------------------------------
+81. ***ROUTE METRIC ONLY STEERS OUTBOUND TRAFFIC***
+    (2026.07.08)
+    Even after you fix the default-route metric so that new
+    outbound connections prefer the USB WiFi dongle over the
+    Pi's onboard wlan0, INBOUND TCP connections (SSH from the
+    laptop dialed to the Pi's OTHER IP, Foxglove client dialing
+    the OTHER IP) still land on the interface the client
+    dialed.  DDS multi-locator advertisement makes it worse.
+    Real fix if one interface is definitively better: DISABLE
+    the worse one:
+        sudo nmcli con modify netplan-wlan0-<SSID> \
+                              connection.autoconnect no
+        sudo nmcli dev disconnect wlan0
+    Reverse with `... autoconnect yes` and `nmcli con up ...`.
+
+--------------------------------------------------------------
+82. ***FOXGLOVE STUDIO NEEDS WebSocket 8765 (foxglove_bridge),
+    NOT 9090 (rosbridge)***  (2026.06.20)
+    They are DIFFERENT protocols.  Foxglove's native binary
+    protocol is faster and lower-latency than rosbridge JSON.
+    Bridge:
+        ros2 launch foxglove_bridge foxglove_bridge_launch.xml
+    Studio connect string:
+        ws://<robot-lan-ip>:8765
+    Enable "Assets" on the bridge to serve `package://` URDF
+    meshes remotely.
+
+--------------------------------------------------------------
+83. ***`localhost` FROM WINDOWS MEANS THE WINDOWS MACHINE -
+    USE LAN IP***  (2026.03.09)
+    Foxglove Studio on Hank Rearden trying to reach
+    `ws://localhost:8765` fails - localhost is the WINDOWS
+    machine.  Use `ws://192.168.68.66:8765` (Stingray's IP).
+    Get it on Linux with `hostname -I`.  Obvious in retrospect,
+    burned an evening.
+
+--------------------------------------------------------------
+84. ***SSH KEEPALIVE TRIPLE FOR VSCODE REMOTE-SSH
+    RELIABILITY***  (2026.06.01; verified 2026.07.20)
+    All three files must agree.
+    Windows client `%USERPROFILE%\.ssh\config` (canonical
+    wildcard form - applies to every host):
+        Host *
+          AddressFamily inet
+          ServerAliveInterval 30
+          ServerAliveCountMax 6
+          TCPKeepAlive yes
+        Host Stingray
+          HostName 192.168.68.66      # wlxUSB dongle IP
+          User ubuntu
+          AddressFamily inet
+        Host LinuxBox
+          HostName LinuxBox
+          User ubuntu
+    (Per-host `ServerAliveInterval` also works - just repeat
+    inside each `Host` block instead of `Host *`.)
+    VS Code Windows-side `settings.json`:
+        "remote.SSH.connectTimeout": 60,
+        "remote.SSH.serverInstallTimeout": 300,
+        "remote.SSH.lockfilesInTmp": true,
+        "remote.SSH.useLocalServer": true,
+        "remote.SSH.maxReconnectionAttempts": 5
+    Server-side `/etc/ssh/sshd_config` (append):
+        TCPKeepAlive yes
+        ClientAliveInterval 30
+        ClientAliveCountMax 10
+    Then `sudo systemctl restart ssh`.
+    Note: the `remote.SSH.*` settings live in the WINDOWS
+    (client) settings.json, not the Pi's.  Common mistake.
+
+
+================================================================
+PART IX - BACKUP AND REBUILD DISCIPLINE
+================================================================
+
+--------------------------------------------------------------
+85. ***FULL-DISK `dd | gzip` BEATS `rsync` FOR BASE OS
+    BACKUP***  (2025.11.23)
+    Reserve `rsync` for INCREMENTAL, non-system, source-tree
+    backups.  For the base OS install, use:
+        sudo sh -c 'dd if=/dev/nvme0n1p2 bs=4M \
+                        conv=sync,noerror status=progress \
+                    | gzip -1 \
+                    > /media/.../nvme_root.img.gz'
+        # ALSO the boot partition:
+        sudo sh -c 'dd if=/dev/nvme0n1p1 bs=4M ...'
+        # Verify:
+        gzip -t nvme_root.img.gz && echo OK
+    Restore:
+        gunzip -c nvme_root.img.gz \
+            | sudo dd of=/dev/nvme0n1p2 bs=4M status=progress
+
+--------------------------------------------------------------
+86. ***USB BACKUP DRIVE MUST BE ON A POWERED HUB FOR LONG
+    dd RUNS***  (2025.11.23)
+    Bus-powered USB HDDs disconnect partway through a 30-60
+    minute dd operation.  Symptom: drive vanishes from `lsblk`
+    mid-copy, `dmesg` shows `usb ... device not accepting
+    address ..., error -71`.  Cause: hub or Pi USB power
+    insufficient for sustained draw + spin-up transients.
+    Fix: powered USB hub or direct blue USB3 port on the Pi 5.
+
+--------------------------------------------------------------
+87. ***USB DRIVE FILE-SYSTEM CHOICE - exFAT, NOT FAT32***
+    (2025.11.23)
+    FAT32 has a 4 GB single-file limit; a full NVMe image
+    truncates.  exFAT supports arbitrarily large files and
+    is readable on Linux + Windows + Mac.
+    One-time setup (all data on drive lost):
+        sudo parted /dev/sda mklabel gpt
+        sudo parted /dev/sda mkpart primary 0% 100%
+        sudo partprobe /dev/sda
+        sudo apt install exfatprogs
+        sudo mkfs.exfat /dev/sda1
+
+--------------------------------------------------------------
+88. ***COMMIT + PUSH EVERYTHING DAILY. IF IT'S NOT ON GITHUB,
+    IT DOESN'T EXIST***  (2026.06.04 - the disaster's headline
+    lesson; corollary added 2026.07.26)
+    The rsync catastrophe wiped Stormy's SSD.  What survived
+    was on GitHub (articubot_one main + exploration,
+    roboclaw_driver fork).  What was lost was everything not
+    yet pushed: memory files, tasks.json, indicators config
+    not committed, rosbags, unpushed scripts.
+    Rule: end of every substantive session, `git add -A && git
+    commit -m ... && git push`.  Especially for config-only
+    edits that "aren't code".
+
+    Corollary - keep LOCAL edits out of upstream PRs.
+    Two goals in tension:
+      (i)  EVERY config file should be on GitHub as disaster
+           insurance (else the previous rule fails).
+      (ii) Local parameters (IPs, house-specific poses,
+           personal PID tunes) should NOT propagate upstream
+           in shared PRs.
+    Reconciliation:  practicalities depend on the specific
+    repo (private fork vs shared upstream) and on which files
+    carry local values.  Standard mechanisms include private
+    forks, protected branches, .gitignore + templates, git
+    skip-worktree, and separate dotfiles repos (see item 89).
+    Pick the mechanism at push time on a per-file basis.  Do
+    not let the ambiguity become an excuse to leave anything
+    uncommitted.
+
+--------------------------------------------------------------
+89. ***DOTFILES REPO FOR CONFIG FILES***  (2026.06.29;
+    categorization expanded 2026.07.26)
+    A private GitHub repo (github.com/JHPHELAN/stingray-
+    dotfiles) holds MACHINE- AND USER-SCOPED config that is
+    NOT project-source.  Concrete contents on Stormy:
+        Shell / editor / git:
+          ~/.bash_aliases, ~/.bashrc, ~/.inputrc, ~/.gitconfig
+        Access:
+          ~/.ssh/authorized_keys
+        System-level (udev):
+          /etc/udev/rules.d/99-robot.rules
+          /etc/udev/rules.d/80-movidius.rules
+        ROS runtime:
+          ~/cyclonedds.xml
+
+    Which config lives WHERE (rule of thumb):
+      DOTFILES repo (stingray-dotfiles, PRIVATE):
+        Anything scoped to "this machine" or "this user":
+        shell environment, SSH keys, udev rules, network
+        interface names, DDS peer lists, tasks.json,
+        editor preferences.
+      SOFTWARE repo (articubot_one/jp):
+        Anything a Manual-follower needs to reproduce the
+        robot: URDF, launch files, node source, package
+        yamls that ship as reasonable defaults.
+      BUILD repo (stingray, PUBLIC):
+        Hardware descriptors: BOM, photos, mechanical
+        drawings, chassis details.
+      Files that have BOTH shipping-default and per-house
+      local values (map yamls, IP addresses, PID tunes)
+      are the awkward middle case - see item 88's corollary
+      for the mechanisms and defer the per-file decision
+      to push time.
+
+    With `sync-from-live.sh` and `sync-to-live.sh` (--apply for
+    write, else dry-run).  Post-disaster restore = clone this
+    repo + `sync-to-live.sh --apply`.  Do this EARLY.
+
+--------------------------------------------------------------
+90. ***"BACKUP BEFORE ANY HARDWARE PIVOT" RULE***
+    (2025.11.23)
+    Before swapping IMU, replacing LiDAR, changing power topology,
+    or any other invasive change - image the SD/SSD first.
+    Compressed image of a fresh Ubuntu robot install is ~13 GB
+    and takes ~40 min at 115 MB/s.  Trivial insurance premium.
+
+--------------------------------------------------------------
+91. ***`stingray-dotfiles` REPO IS THE POST-DISASTER FIRST-
+    RESTORE STEP***  (2026.06.29 doctrine)
+    After a fresh OS install + `ros-jazzy-desktop`, the FIRST
+    action is:
+        git clone https://github.com/JHPHELAN/stingray-dotfiles
+        cd stingray-dotfiles
+        ./sync-to-live.sh --apply
+    That restores bash aliases, tasks.json, cyclonedds.xml, udev
+    rules, .inputrc, .ssh - the muscle-memory environment - in
+    30 seconds.  Then clone repos + colcon build.
+
+--------------------------------------------------------------
+92. ***KILL-SWITCH SPARE ON THE SHELF***  (2026.05.04)
+    Remote key-fob kill-switch died silently on Stormy with no
+    LED indication of "SHOULD light on power-up" (docs
+    inadequate).  Ordered two replacements just in case.
+    Same rule for any single-point safety device.
+
+
+================================================================
+PART X - TOOLS, ECOSYSTEM, PEOPLE
+================================================================
+
+--------------------------------------------------------------
+93. ***WIMBLE'S `roboclaw_driver` > BASICMICRO's
+    `basicmicro_ros2`***  (2026.03.28 shootout)
+    For a differential-drive robot on Pi 5:
+      Wimble    3700 lines C++, direct POSIX termios, no ext
+                deps, hand-written, battle-tested on Sigyn,
+                hardware-enforced distance-limited watchdog.
+      BasicMicro 10000 lines Python + 18300 lines mock-based
+                tests, external Basicmicro_python library
+                loaded via sys.path.insert hack, AI-generated
+                per its own header, over-engineered for
+                trajectories + servos + homing you don't need.
+    Wimble wins on:  deployment simplicity (colcon build only),
+                     performance (no GIL, no library overhead),
+                     safety model (hardware watchdog),
+                     auditability (~afternoon to read all).
+    Cite in the Manual current-hardware chapter so future
+    maintainers don't "helpfully" switch back.
+
+--------------------------------------------------------------
+94. ***`ros2-copilot-skills` MATERIALLY IMPROVES AI OUTPUT***
+    (2026.04.23 - Michael Wimble published, 158 SKILL.md files)
+    Install once, benefit forever:
+        git clone https://github.com/wimblerobotics/ros2-copilot-skills.git \
+                  ~/.copilot/skills
+    VS Code + Copilot auto-consults relevant skills before
+    answering ANY prompt in ANY workspace.  Zero token overhead
+    for unrelated queries (description-only discovery).  Skills
+    with immediate Stormy relevance:
+        mppi-critics, amcl-tuning, ekf-sensor-fusion,
+        costmap-architecture, inflation-layer, slam-toolbox
+    Update:  `cd ~/.copilot/skills && git pull`.
+
+--------------------------------------------------------------
+95. ***SERGEI GRICHINE'S FORKS ARE THE DEFAULT
+    PICKS***  (recurring; list trimmed 2026.07.26)
+    On Stormy the canonical drivers/packages sourced from
+    slgrobotics are:
+      slgrobotics/bno08x_ros2_driver
+          - smbus2-based (fewer I2C stalls than flynneva/bno055
+            which uses older smbus lib)
+          - use_magnetometer YAML key is TOP-LEVEL (item 42)
+      slgrobotics/bno055 (fork of flynneva)
+          - transitional; retired when BNO085 arrived
+      slgrobotics/articubot_one wiki
+          - the canonical workspace layout Stormy adopts
+          - source of the `stingray/` robot folder pattern
+      slgrobotics/wifi_logger_visualizer (heat map)
+    Also available from slgrobotics but NOT deployed on
+    Stormy (documented here so a follower on a differently-
+    shaped robot can find them):
+      slgrobotics/depthai_rospi   - OAK-D LITE bringup
+                                    (Stormy uses the regular
+                                    OAK-D via ros-jazzy-
+                                    depthai-ros-v3 apt
+                                    package, not this fork)
+      slgrobotics/ros_battery_monitoring  - not deployed
+      slgrobotics/scan_to_range           - not deployed
+    Add Sergei Grichine to the collaborators list.
+
+--------------------------------------------------------------
+96. ***WIMBLE'S `roboclaw_studio` REPLACES BASICMICRO
+    MOTION STUDIO ON LINUX***  (2026.03.17)
+    Motion Studio is Windows-only and refuses to set LBmin
+    below 5.5 V on the 2x7A V5c.  `roboclaw_studio` is a Python
+    PyQt6 tool that talks to the RoboClaw via serial, can send
+    the SETMINLB / SETMAXLB opcodes (commands 26, 27) or the
+    newer SETLOGICVOLTAGES (command 58) - see item 97.
+        git clone https://github.com/wimblerobotics/roboclaw_studio
+    Install prerequisites in a Python venv (Ubuntu 24.04 refuses
+    system pip); one-time `sudo apt install libxcb-cursor0`
+    fixes the Qt xcb plugin error.
+
+--------------------------------------------------------------
+97. ***ROBOCLAW 2x7A V5c HAS NO EXTERNAL LOGIC BATTERY -
+    SUPPRESS THE FALSE 3-RED-BLINK***  (2026.03.23)
+    The 2x7A generates its own ~3.3 V logic rail internally.
+    Factory default has Min LB = Max LB = 5.5 V; actual 3.3 V
+    trips status bit 0x00000010 (mapped ERROR_LBATHIGH),
+    3-red-blink LED.  Motion Studio LOCKS the min at 5.5 V
+    and refuses lower.
+    Fix (RAM-only, applied on every driver startup by James's
+    fork of roboclaw_driver):
+        Send Command 58 SETLOGICVOLTAGES with min=0 (0.0V)
+        max=140 (14.0V).  Wide window; defensive against
+        regulator variation.  See `roboclaw_cmd_set_logic_
+        battery_voltages.h` in JHPHELAN/roboclaw_driver@main.
+
+--------------------------------------------------------------
+98. ***PITO SALAS'S `handy net_latency` FOR MULTI-MACHINE
+    DDS TIMING***  (2025.10.24)
+    Repo: github.com/Boston-Robot-Hackers/handy.  Two nodes
+    exchange wall-clock stamps; receiver computes skew.
+    Cite item 52 for usage.  Small tool, invaluable when
+    two-machine ROS produces mysterious TF cache errors.
+
+--------------------------------------------------------------
+99. ***FLUX.AI IS "ARTIFICIAL STUPIDITY" FOR PCB LAYOUT***
+    (2026.05.16, verbatim)
+    "Flux.ai isn't AI, it's AS - Artificial Stupidity!  It was
+     neurotically obsessive and indecisive!"
+    $20 Pro tier ate all ACUs halfway through the second
+    project.  Use KiCAD; hand-lay schematic + PCB; order from
+    JLCPCB (~$55 including shipping + duties + tax for Stormy's
+    indicators board).  For circuit-design AI assistance, use
+    Claude Opus in ASCII schematic mode - it produces workable
+    circuits with component values and knows about
+    logic-level-vs-standard MOSFET thresholds.
+
+--------------------------------------------------------------
+100. ***USE LOGIC-LEVEL MOSFETS (IRLZ44N) FOR 3.3V GPIO
+     DIRECT-DRIVE***  (2026.05.29 - Rev 3 PCB)
+     IRFZ44N has Vgs(th) ~2-4 V and doesn't fully enhance
+     until Vgs = 10 V - driving it from Pi 3.3 V GPIO leaves
+     it in the linear region, hot and dim.  Options:
+       (a) IRLZ44N (logic-level, pin-compatible drop-in).
+           Fully on at Vgs = 3.3 V.  CORRECT choice.
+       (b) NPN 2N3904 level-shifter from GPIO to a 12 V pull-up
+           on the IRFZ44N gate.  Works but inverts polarity
+           and adds a transistor.
+       (c) Dedicated gate driver IC.  Overkill for a
+           single-bulb load.
+     Stormy's Rev 3 indicators PCB uses two IRLZ44N direct
+     from GPIO 17 (headlights) and GPIO 27 (LED strobe).
+
+--------------------------------------------------------------
+101. ***PREFER USB AUDIO + WAV OVER PIEZO BUZZER***
+     (2026.05.15)
+     Piezo buzzers have exactly one tone.  A USB-C audio DAC
+     dongle + tiny 8 ohm speaker (Amazon B00IRVQ0F8 +
+     B0B4D1BN4F) can play any WAV, giving state-aware audio:
+     "beacon on / Nav2 abort / Danger Will Robinson / boot
+     chime".  Playback via `aplay` subprocess spawn is
+     non-blocking; guard with a flag to prevent overlap; drive
+     from indicators_node.py.  MP3 -> WAV conversion:
+         ffmpeg -i input.mp3 -ar 44100 -ac 2 \
+                -sample_fmt s16 output.wav
+     Boost volume (safe, peak-normalize):
+         sox in.wav out_LOUD.wav norm -0.1 gain 6
+
+--------------------------------------------------------------
+102. ***RESERVE THE OFFICIAL POWERWERKS CRIMPER FOR
+     POWERPOLE***  (2026.01.11)  See item 29.
+
+--------------------------------------------------------------
+103. ***SERGEI'S BNO085 TIPS WIKI - USE IT AS THE IMU
+     COMMISSIONING CHECKLIST***  (2026.02.10)
+     Reference:
+       https://github.com/slgrobotics/articubot_one/wiki/
+       IMUs-%E2%80%90-Tips-and-Lessons
+     Sanity-check axes with the accelerometer / gyro table.
+     For Humble, TX at 29.97 N, -95.19 W (NOAA WMMHR-2025):
+       Declination      +1.67 deg
+       Inclination     +58.63 deg
+       Total intensity 46,139 nT (46.1 uT)
+       X (North)      +24,007 nT
+       Y (East)          +701 nT
+       Z (Down)       +39,395 nT
+     Use these for calibration checks against
+     `/imu/mag`.
+
+--------------------------------------------------------------
+104. ***MOUNT EXFAT ON UBUNTU 24.04 WITHOUT THE -t FLAG***
+     (2026.07.31 - first Tier-2 backup to the Sabrent HDD)
+     Symptom:  `sudo mount -t exfat /dev/sda1 /mnt/backup`
+     fails with "wrong fs type, bad option, bad superblock,
+     missing codepage or helper program, or other error"
+     even though `blkid` cleanly reports the partition as
+     TYPE="exfat" with a valid UUID.
+     Cause:  `-t exfat` invokes the userspace `mount.exfat`
+     helper from the `exfat-fuse` package, which is NOT
+     installed by default on Ubuntu 24.04.
+     Fix:  drop the `-t` flag entirely.  The kernel `exfat`
+     module (in-tree since Linux 5.4, autoloaded on Ubuntu
+     24.04) handles the mount via /proc/filesystems
+     auto-detection:
+         sudo modprobe exfat        # if not already loaded
+         sudo mount /dev/sda1 /mnt/backup
+     Verify:  `mount | grep sda1` should print `type exfat`
+     (kernel driver), NOT `type fuseblk` (userspace helper).
+     Alternative if you insist on `-t exfat`:
+         sudo apt install exfat-fuse
+     Encountered during the first Chapter 20.4 weekly backup
+     of Stormy's 238 GB root partition to the Sabrent USB
+     adapter + Seagate ST3160812AS 160 GB.  Backup completed
+     at 114 MB/s over USB 3.0 (blue port); 13 GB compressed
+     image, verified with `gzip -t`.
+
+
+================================================================
+INDEX BY SYMPTOM (quick-lookup when something goes wrong)
+================================================================
+
+Symptom                                            Items to check
+---------------------------------------------------------------------
+"Message Filter dropping message: frame ...
+    timestamp earlier than transform cache"        51, 52, 53, 66
+Wheel does honey-bee-dance, one motor jiggles      17, 21
+Motor cooks silently                              21, 26
+Encoder reads ~half of CPR regardless of pos       17
+RoboClaw 3-red-blink at rest                       97
+Motors don't respond to joystick                   36, 37
+Nav2 goal heading overshoot                        60
+Robot too shy to leave dock                        58, 59, 65
+SLAM drift accumulates on far-room trip            56
+AMCL delocalizes in featureless area               64
+Doorway pinch prevents planning                    57, 58, 59
+"Sensor origin out of bounds" costmap error        (velocity units bug)
+IMU orientation resets differently every boot      42
+Pi 5 low-voltage warning at splash / reboots       19, 24
+Bench PSU voltage sags with buck converter         16
+Motor melts / drive shaft won't turn               26
+Encoder value stuck near ~half-CPR                 17
+Camera renders in Gazebo but no ROS topic          71
+Mesh missing in Gazebo but in RViz                 70
+Mesh wrong color / white in RViz                   72, 73
+LiDAR points 90 deg off from expected              74
+`ros2 topic list` returns 5 topics on second host  47, 78, 79
+Pi 5 can't associate with 2.4 GHz WiFi             77
+Foxglove Studio connection failed                  82, 83
+RViz keepout mask / map missing                    49
+Config edit didn't take effect                     40
+Driver won't compile after apt update              38, 76
+`git push` rejected as diverged                    (git rebase drill)
+YAML parse error "Sequences cannot be key"         35
+Boot fails after AI-suggested kernel install       7
+`sudo mount -t exfat` fails "can't read superblock" 104
+
+================================================================
+INDEX BY STARDATE (chronological reference to source log)
+================================================================
+
+Bulk chronology of the field-note items above:
+  2025.02.24  item 4  ("You're fired!" origin)
+  2025.03.05  item 34 ([pi5] section header, Michael Wimble fix)
+  2025.08.17  item 57 (inflation radius rule)
+  2025.09.29  item 16 (bench PSU + buck converter trap)
+  2025.10.10  item 35 (YAML footprint inline string)
+  2025.10.19  item 66 (timestamp cache errors)
+  2025.10.21  item 51 (use_sim_time on real hardware)
+  2025.10.24  items 52, 53, 98 (time sync, DDS, net_latency)
+  2025.11.20  item 28 (belt-driven LiDAR wear)
+  2025.11.23  items 85, 86, 87 (NVMe backup discipline)
+  2025.11.27  item 7  (CP210x kernel saga, AI boundary rule)
+  2025.11.30  items 19, 20, 24, 25 (power crisis + 52Pi)
+  2025.12.07  item 22 (shunt regulator installed)
+  2025.12.08  item 8  (AI overcomplication)
+  2025.12.14  items 68, 69 (OAK-D IMU + parent_frame)
+  2025.12.19  items 74, 75 (LDLIDAR rotation + height)
+  2026.01.10  item 27 (cast vs extruded acrylic)
+  2026.01.11  items 29, 30 (Powerpole crimper, hand tap)
+  2026.01.13  item 32 (Sergei's IMU placement rule)
+  2026.01.16  item 31 (BNO085 SDA/SCL labels swapped)
+  2026.01.19  item 40 (install/ config yaml)
+  2026.02.10  item 103 (Sergei's IMU tips wiki)
+  2026.02.21  items 5, 13 (DO NOT USE AI FOR TROUBLESHOOTING)
+  2026.03.01  item 10 (GPT4All local fallback)
+  2026.03.02  items 47, 48 (zombie process cleanup drill)
+  2026.03.04  item 1  (context.txt discipline BORN)
+  2026.03.07  items 70, 71, 72 (Gazebo Harmonic mesh + camera)
+  2026.03.09  item 83 (localhost from Windows)
+  2026.03.14  items 36, 37, 60, 64 (12-bug marathon +
+                                    AMCL tuning + heading)
+  2026.03.16  item 36 (Twist / TwistStamped v2)
+  2026.03.17  item 96 (roboclaw_studio install)
+  2026.03.20  item 17 (encoder-killer mystery, both boards)
+  2026.03.21  items 18, 23 (shunt-does-not-protect-signals,
+                            reversed-polarity test)
+  2026.03.23  item 97 (CMD 58 SETLOGICVOLTAGES fix)
+  2026.03.28  items 9, 14, 93 (driver shootout)
+  2026.03.29  items 63 (SLAM Toolbox Pi 5 tunings)
+  2026.03.30  item 44 (loadgraph theta convention)
+  2026.04.04  items 58, 65 (blueprint-to-PGM + allow_unknown)
+  2026.04.12  item 60 (heading overshoot fix - complete)
+  2026.04.17  item 56 (loop-closure lesson)
+  2026.04.23  item 94 (ros2-copilot-skills)
+  2026.04.30  item 62 (autonomous frontier exploration)
+  2026.05.02  items 59, 61 (polygon footprint + OAK-D points)
+  2026.05.04  item 92 (kill-switch spare)
+  2026.05.08  items 21, 26 (motor burnout + Hairball Lesson)
+  2026.05.15  items 11, 101 (handoff-note + WAV audio)
+  2026.05.16  item 99 (Flux.ai "artificial stupidity")
+  2026.05.29  item 100 (IRLZ44N direct-drive PCB)
+  2026.05.31  item 15 (short-focused-chats testimony)
+  2026.06.01  item 84 (SSH keepalive triple)
+  2026.06.04  items 2, 3, 88 (rsync disaster + rules)
+  2026.06.06  items 6, 11 (verify model, handoff doctrine)
+  2026.06.08  items 6, 38 (GPT-4o discovery + keyring binary)
+  2026.06.15  items 25, 33 (USB hub silent failure)
+  2026.06.20  items 36, 49, 82 (TwistStamped v3, keepout QoS,
+                                Foxglove bridge port)
+  2026.06.27  item 77 (Pi 5 2.4 GHz WiFi is broken)
+  2026.06.29  items 73, 89 (RViz multi-visual bug,
+                            dotfiles repo)
+  2026.07.08  item 81 (route metric outbound only)
+  2026.07.10  items 78, 79, 80 (Deco multicast drop,
+                                CycloneDDS unicast fix)
+  2026.07.31  item 104 (mount -t exfat vs kernel driver
+                        on Ubuntu 24.04; first Tier-2
+                        weekly backup)
+
+================================================================
+END OF STINGRAY FIELD NOTES
+================================================================
+Compiled from Stingray_Curation_Notes.txt (8014 lines, 17
+chunks) which in turn was distilled from Stingray Experience.txt
+(44,832 lines, 235 stardated entries, 2023.05.06 - 2026.07.11).
+104 items across 10 parts.  Each cited to the stardate it was
+learned.  Companion Builder's Manual pending.
+
+"Not a destination, it's a journey."
+                                  - James H Phelan, MD
+                                    (HBRC email, 2025.11.21)
+================================================================

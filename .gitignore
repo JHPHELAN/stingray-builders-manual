@@ -1,0 +1,21 @@
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor swap / backup files
+*~
+*.bak
+*.orig
+*.swp
+*.swo
+.#*
+\#*\#
+
+# VS Code local settings (keep repo-local out of the commit unless
+# there is a shared config to publish)
+.vscode/
+
+# OneDrive lock artifacts
+*.tmp
+~$*
