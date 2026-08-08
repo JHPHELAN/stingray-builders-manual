@@ -43,9 +43,13 @@ themselves so they read cleanly in any terminal or editor.
 
 ## License
 
-TBD. Currently all-rights-reserved by the owner. A permissive docs
-license (probably CC BY 4.0 or similar) will be chosen before any
-public release.
+Licensed under the **Creative Commons Attribution 4.0 International
+License** (CC BY 4.0). See [`LICENSE`](LICENSE) for the full text, or
+<https://creativecommons.org/licenses/by/4.0/> for the human-readable
+summary.
+
+Attribution: James H Phelan, MD, *Stormy the Stingray - Builder's
+Manual*, <https://github.com/JHPHELAN/stingray-builders-manual>.
 
 ## Version
 

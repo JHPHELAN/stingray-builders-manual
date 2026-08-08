@@ -4112,43 +4112,35 @@ APPENDIX G - DIAGRAMS AND PHOTOS
 ================================================================
 
 Central catalog of diagrams and photos referenced from the
-body chapters.  Each entry lists the source file (relative
-to the Stingray workspace root), the subsystems it covers,
-and the chapters that reference it.  Files themselves live
-in the workspace, not inline in this plain-text Manual;
-when the Manual is republished as Markdown on GitHub, embed
-them at the chapters listed under "Referenced from".
+body chapters.  Each entry lists the file (path relative to
+this repo's root), the subsystems it covers, and the chapters
+that reference it.  The files live in the `images/` subfolder
+of this repo, so the Manual is self-contained; when it is
+republished as Markdown on GitHub, embed each image at the
+chapters listed under "Referenced from".
 
 Add new entries at the bottom.  Keep them short: filename,
 one-line description, referenced-from list.
 
-TODO (2026.08.08): sweep the workspace for charts and images
-worth adding here.  Candidates to review:
-    - Photos/                     (build photos, wiring shots)
-    - ScreenShots/                (RViz2, Foxglove, Motion Studio,
-                                    PMIC dumps, dmesg captures)
-    - CAD files/*.cdr, *.dxf, *.f3d  (mechanical drawings -
-                                       laser-cut top / bottom /
-                                       side panels, IMU mount,
-                                       fuse-holder proto-board,
-                                       RealSense / OAK-D mounts)
-    - Robot Magazine Article/     (2010 Parallax Stingray review
-                                    scans - relevant to Ch 1
-                                    origin story)
-    - Project Show and Tell/      (Blessing of the Robot
-                                    ceremony, HBRC / Houston
-                                    Robotics demo shots)
-    - Ping)))/                    (early ultrasonic sensor
-                                    experiments - historical only)
-For each promising file, add an entry under a new G.N heading
-with filename, one-line description, and "Referenced from"
-list of body chapters.
+Workspace sweep completed 2026.08.08.  Deferred image work
+(images that exist but need regeneration before adding here):
+
+    Photos/StingraySchematic.2025.04.07.pdf
+        -> needs update to reflect current wiring
+    Photos/RoboclawSettingsGeneral.png
+        -> re-capture after Serial Timeout = 0.5 s (Ch 4.4)
+    Photos/RoboclawSettingsVelocity.png
+        -> confirm still current; add if so
+    Photos/frames_2025-12-21_19.58.44.pdf
+        -> regenerate TF-tree PDF (Ch 12)
+
+Add each as a new G.N entry once the source image is refreshed.
 
 ----------------------------------------------------------------
 G.1  WIRING.jpg
 ----------------------------------------------------------------
 
-File:            Photos/WIRING.jpg
+File:            images/WIRING.jpg
 Subject:         RoboClaw wiring overview - one image covers
                  four subsystems:
                    - remote kill switch -> RoboClaw S5
@@ -4159,6 +4151,91 @@ Referenced from: Chapter 3.2 (remote kill switch)
                  Chapter 4.3 (motor / encoder wiring)
                  Chapter 4.4 (RoboClaw UART connection)
                  Chapter 6.1 (BNO085 I2C pinout)
+
+----------------------------------------------------------------
+G.2  Shunt Regulator Diagram.png
+----------------------------------------------------------------
+
+File:            images/Shunt Regulator Diagram.png
+Subject:         Pololu 3779 shunt regulator - wiring diagram
+                 showing bus-sense input, on-board trip-voltage
+                 potentiometer, and dump-to-ground FET path.
+Referenced from: Chapter 3.3 (shunt regulator - Pololu 3779)
+
+----------------------------------------------------------------
+G.3  Raspberry Pi GPIO pinout.png
+----------------------------------------------------------------
+
+File:            images/Raspberry Pi GPIO pinout.png
+Subject:         Canonical 40-pin Raspberry Pi header pinout,
+                 used as the reference for every "GPIO N" pin
+                 number quoted in the Manual.
+Referenced from: Chapter 5   (compute - Pi 5 GPIO header)
+                 Chapter 4.4 (RoboClaw UART0 on GPIO 14/15)
+                 Chapter 6.1 (BNO085 on I2C bus 1, GPIO 2/3)
+
+----------------------------------------------------------------
+G.4  BNO085 Wiring.jpg
+----------------------------------------------------------------
+
+File:            images/BNO085 Wiring.jpg
+Subject:         Adafruit BNO085 STEMMA QT breakout wired to
+                 the Pi 5 I2C bus 1 header pins:
+                   Pin  3 (BLUE)   SDA  -> BNO085 SDA
+                   Pin  5 (YELLOW) SCL  -> BNO085 SCL
+                   Pin  4 (RED)    VIN  -> BNO085 VIN (3.3 V)
+                   Pin  6 (BLACK)  GND  -> BNO085 GND
+Referenced from: Chapter 6.1 (BNO085 I2C pinout)
+
+----------------------------------------------------------------
+G.5  Stormy Portrait angle.jpg
+----------------------------------------------------------------
+
+File:            images/Stormy Portrait angle.jpg
+Subject:         Hero shot of Stormy - three-quarter angle view
+                 showing top plate, LiDAR, OAK-D, USB WiFi
+                 antenna, and kill-switch button in one frame.
+                 The Manual's canonical "this is Stormy" image.
+Referenced from: Chapter 1   (origin - what Stormy looks like)
+                 Chapter 2   (physical description at a glance)
+                 README.md   (repo hero image)
+
+----------------------------------------------------------------
+G.6  OSR kitspace CAD.png
+----------------------------------------------------------------
+
+File:            images/OSR kitspace CAD.png
+Subject:         CAD render of the JPL Open Source Rover
+                 (Fidelity) - Stormy's five-year predecessor
+                 platform referenced in the origin story.
+                 Included as historical context for why
+                 James wanted a simpler robot.
+Referenced from: Chapter 1   (origin - predecessor Fidelity)
+
+----------------------------------------------------------------
+G.7  wifi_heatmap_2026-07-05.png
+----------------------------------------------------------------
+
+File:            images/wifi_heatmap_2026-07-05.png
+Subject:         ROYGB rainbow WiFi signal heat map overlaid
+                 on Stormy's Nav2 map of the Houston house,
+                 captured 2026.07.05 via slgrobotics's
+                 `wifi_logger_visualizer` + JHPHELAN's
+                 rainbow-heatmap PR.  Red = weak, blue =
+                 strong.
+Referenced from: Chapter 9.4 (WiFi monitoring - heat mapping)
+
+----------------------------------------------------------------
+G.8  wifi_drive_20260711_075912_signal.png
+----------------------------------------------------------------
+
+File:            images/wifi_drive_20260711_075912_signal.png
+Subject:         WiFi signal-strength trace along a house-wide
+                 drive on 2026.07.11 (`wifi_drive_...`
+                 export), showing which TP-Link Deco node
+                 Stormy roamed to at each map location.
+                 Companion to G.7's static heat map.
+Referenced from: Chapter 9.4 (WiFi monitoring - drive survey)
 
 
 ================================================================
