@@ -19,3 +19,12 @@ desktop.ini
 # OneDrive lock artifacts
 *.tmp
 ~$*
+
+# KiCad — per-user, cache, backups, autosaves, lock files
+*.kicad_prl
+*-backups/
+fp-info-cache
+*.bak
+*-bak
+_autosave-*
+~*.lck

@@ -4125,8 +4125,6 @@ one-line description, referenced-from list.
 Workspace sweep completed 2026.08.08.  Deferred image work
 (images that exist but need regeneration before adding here):
 
-    Photos/StingraySchematic.2025.04.07.pdf
-        -> needs update to reflect current wiring
     Photos/RoboclawSettingsGeneral.png
         -> re-capture after Serial Timeout = 0.5 s (Ch 4.4)
     Photos/RoboclawSettingsVelocity.png
@@ -4135,6 +4133,9 @@ Workspace sweep completed 2026.08.08.  Deferred image work
         -> regenerate TF-tree PDF (Ch 12)
 
 Add each as a new G.N entry once the source image is refreshed.
+
+(The 2025.04.07 StingraySchematic PDF was superseded
+2026.08.12 by the KiCad-generated full schematic - see G.9.)
 
 ----------------------------------------------------------------
 G.1  WIRING.jpg
@@ -4236,6 +4237,37 @@ Subject:         WiFi signal-strength trace along a house-wide
                  Stormy roamed to at each map location.
                  Companion to G.7's static heat map.
 Referenced from: Chapter 9.4 (WiFi monitoring - drive survey)
+
+----------------------------------------------------------------
+G.9  Stormy Schematic 2026-08-12.png
+----------------------------------------------------------------
+
+File:            images/Stormy Schematic 2026-08-12.png
+Subject:         Full electrical schematic of Stormy as of
+                 2026.08.12, drawn in KiCad 10.0.  Covers
+                 every subsystem in one sheet:
+                   - 12 V battery, main switch, LVD, shunt
+                     regulator
+                   - remote kill switch -> RoboClaw S5
+                   - RoboClaw 2x15A, motors, encoders
+                   - Pi 5 with UART0 to RoboClaw and I2C1
+                     to BNO085
+                   - USB tree (LiDAR, OAK-D, WiFi antenna)
+                 Supersedes the 2025.04.07 StingraySchematic
+                 PDF listed in Ch 20 / archives.
+Source:          KiCad 10.0 project, tracked in this repo:
+                 kicad/Stingray/Stingray.kicad_pro
+                 Regenerate the PNG by opening the schematic
+                 in KiCad and re-exporting when wiring
+                 changes.  Custom symbols live in
+                 kicad/Stingray/Stingray-eagle-import.kicad_sym
+                 (Eagle-import legacy from the Fidelity era).
+Referenced from: Chapter 2   (physical description - overview)
+                 Chapter 3   (power / kill switch - entry pt.)
+                 Chapter 4.3 (motor / encoder wiring)
+                 Chapter 4.4 (RoboClaw UART connection)
+                 Chapter 5   (compute - Pi 5 header)
+                 Chapter 6.1 (BNO085 I2C pinout)
 
 
 ================================================================
