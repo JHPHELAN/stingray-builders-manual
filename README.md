@@ -15,7 +15,7 @@ that has been executed successfully on the real robot.
 | File | Purpose |
 | --- | --- |
 | [`Stingray_Builders_Manual.txt`](Stingray_Builders_Manual.txt) | **Source of truth.** Plain-text master copy of this document.  All edits go here first; `README.md` is regenerated from it (see [Regenerating this README](#regenerating-this-readme)). |
-| [`Stingray_Field_Notes.txt`](Stingray_Field_Notes.txt) | 103 numbered lessons + indexes distilled from the source log.  Cited throughout the Manual by item number. |
+| [`Stingray_Field_Notes.txt`](Stingray_Field_Notes.txt) | 104 numbered lessons + indexes distilled from the source log.  Cited throughout the Manual by item number. |
 | [`Stingray_Curation_Notes.txt`](Stingray_Curation_Notes.txt) | 17 chunks of raw stardated distillate from the source log.  Background material for the Manual. |
 | [`kicad/Stingray/`](kicad/Stingray/) | KiCad 10.0 project - schematic, custom symbol library, PCB stub.  Source for Appendix [G.9](#g9--stormy-schematic-2026-08-12png). |
 | [`images/`](images/) | Diagrams and photos catalogued in [Appendix G](#appendix-g---diagrams-and-photos). |
@@ -60,15 +60,15 @@ Then commit both files together.
 - [CHAPTER 1 - ORIGIN](#chapter-1---origin)
 - [CHAPTER 2 - CURRENT HARDWARE SUMMARY](#chapter-2---current-hardware-summary)
   - [2.1  Physical dimensions and mass](#21--physical-dimensions-and-mass)
-  - [2.2  Drivetrain (see Chapter 4)](#22--drivetrain-see-chapter-4)
-  - [2.3  IMU (see Chapter 6)](#23--imu-see-chapter-6)
-  - [2.4  LiDAR (see Chapter 7)](#24--lidar-see-chapter-7)
-  - [2.5  Camera (see Chapter 8)](#25--camera-see-chapter-8)
-  - [2.6  Compute (see Chapter 5)](#26--compute-see-chapter-5)
-  - [2.7  Network (see Chapters 9 and 18)](#27--network-see-chapters-9-and-18)
-  - [2.8  Power (see Chapter 3)](#28--power-see-chapter-3)
+  - [2.2  Power (see Chapter 3)](#22--power-see-chapter-3)
+  - [2.3  Drivetrain (see Chapter 4)](#23--drivetrain-see-chapter-4)
+  - [2.4  Compute (see Chapter 5)](#24--compute-see-chapter-5)
+  - [2.5  IMU (see Chapter 6)](#25--imu-see-chapter-6)
+  - [2.6  LiDAR (see Chapter 7)](#26--lidar-see-chapter-7)
+  - [2.7  Camera (see Chapter 8)](#27--camera-see-chapter-8)
+  - [2.8  Network (see Chapters 9 and 18)](#28--network-see-chapters-9-and-18)
 - [CHAPTER 3 - POWER SYSTEM](#chapter-3---power-system)
-  - [3.1  Topology (current, 2026-07-20)](#31--topology-current-2026-07-20)
+  - [3.1  Topology (target, 2026-09; rewire in progress)](#31--topology-target-2026-09-rewire-in-progress)
   - [3.2  Emergency stop + remote kill switch (two distinct devices)](#32--emergency-stop--remote-kill-switch-two-distinct-devices)
   - [3.3  Shunt Regulator - Pololu 3779](#33--shunt-regulator---pololu-3779)
   - [3.4  Common power symptoms and fixes](#34--common-power-symptoms-and-fixes)
@@ -429,116 +429,7 @@ Subsequent chapters go deep on each subsystem.
     Chassis offset             0.0455 m
     Front-panel offset          0.090 m
 
-### 2.2  Drivetrain (see Chapter 4)
-
-
-    Motors           2 x Pololu #4753 (50:1 37Dx70L 12V
-                     brushed gearmotor with 64 CPR encoder)
-    Wheels           2 x BaneBots T81, 4-7/8" dia x 0.8" wide,
-                     50A blue, hex-hub
-    Wheel radius        0.0619 m (measured)
-    Wheel circumference 0.389 m  (measured = calculated
-                        from radius)
-    Wheel separation    0.260 m  (center to center)
-    Encoder          Quadrature, 3200 counts per output-shaft
-                     revolution (64 CPR at motor shaft x 50:1)
-    Counts per meter 8226 (from measured wheel radius)
-    Caster           Rear, 0.028 m radius, at x=-0.207,
-                     z=-0.035 relative to base_link
-    Motor controller RoboClaw 2x7A V5c, firmware 4.2.8
-                     Address 128, packet serial
-                     Baud 115200
-                     Per-channel current limit 2.7 A
-                     Wired to Pi UART0 GPIO 14/15
-
-### 2.3  IMU (see Chapter 6)
-
-
-    Chip             Adafruit BNO085 breakout
-    Bus              I2C bus 1 (/dev/i2c-1)
-    Address          0x4A (NOT default 0x4B)
-    Driver           slgrobotics/bno08x_ros2_driver
-    Mode             Game Rotation Vector (magnetometer
-                     disabled; indoor use)
-    Publish rate     50 Hz (was 100 Hz; halved for I2C
-                     bus load)
-
-### 2.4  LiDAR (see Chapter 7)
-
-
-    Model            Youyeetoo FHL-LD19 (replaced YDLIDAR
-                     X2 after 2025.11.20 belt failure)
-    Interface        Silicon Labs CP2102 USB-serial adapter
-    Baud             230400
-    Device           /dev/ldlidar (udev symlink to ttyUSB0)
-    Driver           ldrobotSensorTeam/ldlidar_ros2 (with
-                     pthread.h include fix for log_module.h)
-    Range            0.02 to 12.0 m (capped at 8.0 m for
-                     SLAM Toolbox to reduce compute load)
-    Scan topic       /scan (frame_id: base_laser)
-
-### 2.5  Camera (see Chapter 8)
-
-
-    Model            Luxonis OAK-D
-    Interface        USB 3.0 direct to Pi (own USB3 port,
-                     not through hub)
-    Aux power        From 52Pi power board takeoff
-    Driver           ros-jazzy-depthai-ros-v3 (apt)
-    Point cloud      /oak/points (used by Nav2 for
-                     below-LiDAR obstacle detection)
-    Height band      0.02 to 0.22 m (matches Stormy's
-                     collision band)
-
-### 2.6  Compute (see Chapter 5)
-
-
-    Board            Raspberry Pi 5 Model B, 8 GB
-                     (This is the SECOND Pi 5 - the first
-                     had a broken GPIO 14 TX pin, diagnosed
-                     2025.03.17 by minicom loopback test)
-    Storage          Ediloca EN600 PRO NVMe SSD, 256 GB,
-                     via Geekworm X1001 PCIe-to-M.2 NVMe
-                     Key-M HAT for Pi 5
-                     (Amazon B0CPPGGDQT)
-                     (Note: Inland TN446 / Phison PS5021-E21
-                     is Pi 5 INCOMPATIBLE; do not substitute)
-    Power feed       52Pi PD Power Extension Board
-                     (Amazon B0CYPRDY9Q)
-                     - Accepts 12-24 V input
-                     - Delivers 5.1 V / 5 A to Pi GPIO
-                     - Always-on switch + auto-startup +
-                       manual power control
-    OS               Ubuntu 24.04 Noble Numbat (arm64
-                     Desktop)
-    Kernel           6.8.0-1057-raspi or later (raspi kernel
-                     branch, NOT generic - see Field Note
-                     item 7)
-    ROS distro       Jazzy (with `ros-jazzy-desktop` and
-                     `ros-jazzy-depthai-ros-v3`)
-
-### 2.7  Network (see Chapters 9 and 18)
-
-
-    Ethernet         eth0, 192.168.68.97, DHCP-reserved
-    Internal WiFi    wlan0, DISABLED (connection.autoconnect
-                     no, dev disconnect) as of 2026.07.10
-                     because of Pi 5's 2.4 GHz interference
-                     issues
-    USB WiFi         wlx90de801012a6 (Realtek RTL8812BU
-                     Amazon B078NSSM7W), 192.168.68.66,
-                     DHCP-reserved.
-    LAN              TP-Link Deco mesh, 3 units on
-                     ethernet backhaul
-                     - Study      34:60:F9:5D:7C:14
-                     - Sewing     34:60:F9:5D:7B:C4
-                     - Breakfast  34:60:F9:5D:7C:B0
-    ROS domain       Default (0)
-    RMW              cyclonedds (`rmw_cyclonedds_cpp`)
-    Discovery        UNICAST peer list via
-                     ~/cyclonedds.xml (Chapter 18)
-
-### 2.8  Power (see Chapter 3)
+### 2.2  Power (see Chapter 3)
 
 
     Battery          Zeee 14.8 V (4S LiPo) 9000 mAh
@@ -578,20 +469,143 @@ Subsequent chapters go deep on each subsystem.
                      direct-drive PCB from Pi GPIO 17 / 27
                      (Chapter 16).
 
+### 2.3  Drivetrain (see Chapter 4)
+
+
+    Motors           2 x Pololu #4753 (50:1 37Dx70L 12V
+                     brushed gearmotor with 64 CPR encoder)
+    Wheels           2 x BaneBots T81, 4-7/8" dia x 0.8" wide,
+                     50A blue, hex-hub
+    Wheel radius        0.0619 m (measured)
+    Wheel circumference 0.389 m  (measured = calculated
+                        from radius)
+    Wheel separation    0.260 m  (center to center)
+    Encoder          Quadrature, 3200 counts per output-shaft
+                     revolution (64 CPR at motor shaft x 50:1)
+    Counts per meter 8226 (from measured wheel radius)
+    Caster           Rear, 0.028 m radius, at x=-0.207,
+                     z=-0.035 relative to base_link
+    Motor controller RoboClaw 2x7A V5c, firmware 4.2.8
+                     Address 128, packet serial
+                     Baud 115200
+                     Per-channel current limit 2.7 A
+                     Wired to Pi UART0 GPIO 14/15
+
+### 2.4  Compute (see Chapter 5)
+
+
+    Board            Raspberry Pi 5 Model B, 8 GB
+                     (This is the SECOND Pi 5 - the first
+                     had a broken GPIO 14 TX pin, diagnosed
+                     2025.03.17 by minicom loopback test)
+    Storage          Ediloca EN600 PRO NVMe SSD, 256 GB,
+                     via Geekworm X1001 PCIe-to-M.2 NVMe
+                     Key-M HAT for Pi 5
+                     (Amazon B0CPPGGDQT)
+                     (Note: Inland TN446 / Phison PS5021-E21
+                     is Pi 5 INCOMPATIBLE; do not substitute)
+    Power feed       52Pi PD Power Extension Board
+                     (Amazon B0CYPRDY9Q)
+                     - Accepts 12-24 V input
+                     - Delivers 5.1 V / 5 A to Pi GPIO
+                     - Always-on switch + auto-startup +
+                       manual power control
+    OS               Ubuntu 24.04 Noble Numbat (arm64
+                     Desktop)
+    Kernel           6.8.0-1057-raspi or later (raspi kernel
+                     branch, NOT generic - see Field Note
+                     item 7)
+    ROS distro       Jazzy (with `ros-jazzy-desktop` and
+                     `ros-jazzy-depthai-ros-v3`)
+
+### 2.5  IMU (see Chapter 6)
+
+
+    Chip             Adafruit BNO085 breakout
+    Bus              I2C bus 1 (/dev/i2c-1)
+    Address          0x4A (NOT default 0x4B)
+    Driver           slgrobotics/bno08x_ros2_driver
+    Mode             Game Rotation Vector (magnetometer
+                     disabled; indoor use)
+    Publish rate     50 Hz (was 100 Hz; halved for I2C
+                     bus load)
+
+### 2.6  LiDAR (see Chapter 7)
+
+
+    Model            Youyeetoo FHL-LD19 (replaced YDLIDAR
+                     X2 after 2025.11.20 belt failure)
+    Interface        Silicon Labs CP2102 USB-serial adapter
+    Baud             230400
+    Device           /dev/ldlidar (udev symlink to ttyUSB0)
+    Driver           ldrobotSensorTeam/ldlidar_ros2 (with
+                     pthread.h include fix for log_module.h)
+    Range            0.02 to 12.0 m (capped at 8.0 m for
+                     SLAM Toolbox to reduce compute load)
+    Scan topic       /scan (frame_id: base_laser)
+
+### 2.7  Camera (see Chapter 8)
+
+
+    Model            Luxonis OAK-D
+    Interface        USB 3.0 direct to Pi (own USB3 port,
+                     not through hub)
+    Aux power        From 52Pi power board takeoff
+    Driver           ros-jazzy-depthai-ros-v3 (apt)
+    Point cloud      /oak/points (used by Nav2 for
+                     below-LiDAR obstacle detection)
+    Height band      0.02 to 0.22 m (matches Stormy's
+                     collision band)
+
+### 2.8  Network (see Chapters 9 and 18)
+
+
+    Ethernet         eth0, 192.168.68.97, DHCP-reserved
+    Internal WiFi    wlan0, DISABLED (connection.autoconnect
+                     no, dev disconnect) as of 2026.07.10
+                     because of Pi 5's 2.4 GHz interference
+                     issues
+    USB WiFi         wlx90de801012a6 (Realtek RTL8812BU
+                     Amazon B078NSSM7W), 192.168.68.66,
+                     DHCP-reserved.
+    LAN              TP-Link Deco mesh, 3 units on
+                     ethernet backhaul
+                     - Study      34:60:F9:5D:7C:14
+                     - Sewing     34:60:F9:5D:7B:C4
+                     - Breakfast  34:60:F9:5D:7C:B0
+    ROS domain       Default (0)
+    RMW              cyclonedds (`rmw_cyclonedds_cpp`)
+    Discovery        UNICAST peer list via
+                     ~/cyclonedds.xml (Chapter 18)
+
 
 ## CHAPTER 3 - POWER SYSTEM
 
 
-### 3.1  Topology (current, 2026-07-20)
+### 3.1  Topology (target, 2026-09; rewire in progress)
 
+
+Status (2026-09-06):  the source-OR-ing STPS pair described
+below is the DESIGN INTENT; physical rewiring is in progress
+with supplies arriving 2026-09-07 and a KiCAD drawing update
+to follow.  The as-built pre-rewire hardware (single STPS10L25D
+across the fuse on the proto-board) is described in the
+"Fuse-holder proto-board" section further down.  Update this
+section to "as-built" when the rewire is complete and the
+KiCAD schematic in [`kicad/Stingray/`](kicad/Stingray/) matches.
 
     LiPo 14.8 V 9000 mAh (Zeee)
         |
         v
     Panel-mount slow-blow fuse (rated for LiPo current)
-        |  (STPS10L25D Schottky diode ACROSS the fuse;
-        |   handles fuse-blown case when the shunt loses
-        |   bus reference.)
+        |  (STPS10L25D Schottky diode on the LiPo positive
+        |   lead, cathode toward the bus - one of a pair
+        |   for source OR-ing.  A second STPS lives on the
+        |   bench-PSU positive lead when the bench is
+        |   attached; both feed the same downstream bus so
+        |   the two supplies can coexist during hot-swap
+        |   without back-feeding each other.
+        |   See Field Note item 22.)
         |
         +-- (bus-parallel, NOT in line)
         |     Pololu 3779 shunt regulator
@@ -634,10 +648,16 @@ Subsequent chapters go deep on each subsystem.
 
 Notes on the topology (2026.07.20 authoritative per James):
 
-- The STPS10L25D and the Pololu 3779 are COMPLEMENTARY, not
-  redundant.  The 3779 handles regen in normal operation.
-  The STPS covers the case where the fuse has blown and the
-  shunt has lost its bus reference.
+- The STPS10L25D diodes and the Pololu 3779 serve
+  different, unrelated purposes.  The STPS pair (one on the
+  LiPo positive lead, one on the bench-PSU positive lead)
+  provides source OR-ing so battery and bench PSU can
+  coexist during hot-swap without back-feeding each other.
+  The 3779 dumps regenerative-braking energy.  On Stormy
+  at ~3.2 kg the shunt alone is an adequate back-EMF
+  budget; no braking-resistor bank is installed.  See
+  Field Note item 22 for the light-robot back-EMF budget
+  and when to add an external shunt resistor.
 - The shunt regulator is INSTALLED, not bypassed
   (installed on stardate 2025.12.07).
 - There is NO buck converter anywhere in Stormy's current
@@ -650,7 +670,14 @@ Notes on the topology (2026.07.20 authoritative per James):
   Powering it from the bus (via some future regulator) is
   still an open question pending testing.
 
-Fuse-holder proto-board (2026):
+Fuse-holder proto-board (2026, pre-rewire as-built):
+  Status (2026-09-06):  this section describes the physical
+  hardware ACTUALLY INSTALLED right now, which pre-dates the
+  source-OR-ing rewire described in the topology diagram
+  above.  The single STPS10L25D shown here across the fuse
+  will be replaced by the OR-ing pair (one STPS per source
+  positive lead) when the 2026-09 rewire is complete.
+
   The original build carried the panel-mount fuse holder,
   its STPS10L25D bypass diode, and the bus input/output
   wires as a free-form cluster of spade connectors, with
@@ -4275,14 +4302,14 @@ Referenced from: Chapter 2   (physical description - overview)
 
 
 Compiled 2026-07-20 from Stingray_Curation_Notes.txt (8014
-lines, 17 chunks) and Stingray_Field_Notes.txt (103 items),
+lines, 17 chunks) and Stingray_Field_Notes.txt (104 items),
 which were in turn distilled from the Stingray Experience
 source log (44,832 lines, 235 stardated entries, 2023.05.06
 through 2026.07.11).
 
 Companion deliverables at time of compilation:
     Stingray_Curation_Notes.txt      raw stardated notes
-    Stingray_Field_Notes.txt         103 lessons + indexes
+    Stingray_Field_Notes.txt         104 lessons + indexes
     Stingray_Builders_Manual.txt     this file
     hank-rearden-dotfiles/           Windows-side config
                                      backup kit (README +

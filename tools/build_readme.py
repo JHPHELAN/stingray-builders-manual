@@ -73,7 +73,7 @@ that has been executed successfully on the real robot.
 | File | Purpose |
 | --- | --- |
 | [`Stingray_Builders_Manual.txt`](Stingray_Builders_Manual.txt) | **Source of truth.** Plain-text master copy of this document.  All edits go here first; `README.md` is regenerated from it (see [Regenerating this README](#regenerating-this-readme)). |
-| [`Stingray_Field_Notes.txt`](Stingray_Field_Notes.txt) | 103 numbered lessons + indexes distilled from the source log.  Cited throughout the Manual by item number. |
+| [`Stingray_Field_Notes.txt`](Stingray_Field_Notes.txt) | 104 numbered lessons + indexes distilled from the source log.  Cited throughout the Manual by item number. |
 | [`Stingray_Curation_Notes.txt`](Stingray_Curation_Notes.txt) | 17 chunks of raw stardated distillate from the source log.  Background material for the Manual. |
 | [`kicad/Stingray/`](kicad/Stingray/) | KiCad 10.0 project - schematic, custom symbol library, PCB stub.  Source for Appendix [G.9](#g9--stormy-schematic-2026-08-12png). |
 | [`images/`](images/) | Diagrams and photos catalogued in [Appendix G](#appendix-g---diagrams-and-photos). |

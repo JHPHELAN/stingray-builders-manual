@@ -111,8 +111,9 @@ was purchased with real time or real hardware.
     - kernel install, initramfs regen, EEPROM edit, partition
     table change - STOP and audit.  Ask if there's a SHORTER
     path first.  Example: Copilot suggested installing
-    `linux-generic-hwe-24.04` (which has no Pi 5 DTB and would
-    have bricked the Pi) to get a CP210x driver, when a simple
+    `linux-generic-hwe-24.04` (which has no Pi 5 device
+    tree blob and would have bricked the Pi) to get a
+    CP210x driver, when a simple
     reboot into the already-installed newer raspi kernel worked.
 
 --------------------------------------------------------------
@@ -120,7 +121,8 @@ was purchased with real time or real hardware.
     When an AI proposes a NEW node/service/plugin to solve a
     problem that could be a config change in an existing file -
     the AI has lost the plot.  Example: Copilot proposed a bespoke
-    "IMU correction node" for OAK-D axis alignment; the real fix
+    "IMU (Inertial Measurement Unit) correction node" for OAK-D
+    axis alignment; the real fix
     was setting `parent_frame:=oakd_front_panel` in the launch
     args.  Shortest fix path that touches the fewest files is
     nearly always right.
@@ -216,13 +218,28 @@ PART II - ELECTRICAL
 ================================================================
 
 --------------------------------------------------------------
-16. ***BENCH PSU + BUCK CONVERTER = INRUSH TRAP***  (2025.09.29)
-    Many bench PSUs cannot source the inrush surge a buck
-    converter demands when charging its input caps.  Symptom:
-    RoboClaw's main-battery voltage reads far below the PSU
-    nameplate; RoboClaw ERR LED solid.  Fix: use the LiPo
-    battery for full-system tests.  Bench PSU is fine only
-    for isolated components with no buck converter inline.
+16. ***SCAVENGED PC POWER SUPPLY + BUCK CONVERTER =
+    INRUSH TRAP***  (2025.09.29; scope corrected 2026.09.06)
+    A scavenged desktop-PC ATX power supply (or similar
+    fixed-output brick pressed into service as a bench PSU)
+    cannot source the inrush surge a buck converter demands
+    when charging its input caps.  Symptom: RoboClaw's
+    main-battery voltage reads far below the nameplate;
+    RoboClaw ERR LED solid.
+    Fix: use the LiPo battery for full-system tests, OR use
+    a real adjustable bench PSU with current-limit and
+    transient headroom.  Stormy uses a Kungber 30 V 10 A
+    adjustable DC bench supply (Amazon B08DJ1FDXV, purchased
+    2026 precisely to solve this problem) with no inrush
+    issues since installed.
+    Scope note (James 2026.09.06):  a true adjustable bench
+    PSU does NOT exhibit this failure - the original wording
+    ("many bench PSUs") over-generalized from the scavenged
+    PC brick that motivated the note.  The failure mode is
+    specific to fixed-output PC-style supplies, not to
+    laboratory bench PSUs.  A scavenged PC brick is fine
+    only for isolated components with no buck converter
+    inline.
 
 --------------------------------------------------------------
 17. ***CHECK MOTION STUDIO ENCODER MODE ON BOTH CHANNELS
@@ -270,9 +287,10 @@ PART II - ELECTRICAL
     Cross-references (this is why the check matters):
       - Item 8 (AI overcomplication is a code smell).  The
         original Claude Opus 4.6 diagnosis of the same
-        symptoms proposed an elaborate 6-part cable-PWM-
-        coupling / CMOS-damage chain with caps, series
-        resistors, Schottky clamps and TVS diodes.  All
+        symptoms proposed an elaborate 6-part cable-PWM
+        (pulse-width modulation) coupling / CMOS-damage
+        chain with caps, series resistors, Schottky clamps
+        and TVS (transient voltage suppression) diodes.  All
         plausible in isolation; NONE the actual cause.
         When an AI diagnosis is complex, look for the
         simple setting-change explanation FIRST.
@@ -317,8 +335,9 @@ PART II - ELECTRICAL
     keyboard) drew enough peak current at 5.1V to sag the PSU
     into repeated brownout, and eventually killed it.  Symptoms:
     Pi reaches Ubuntu splash, then reboots in loop; scope shows
-    no visible sag at buck-converter output; Pi PMIC Monitor
-    reports "low voltage warning".  Fix chain:
+    no visible sag at buck-converter output; Pi PMIC (power
+    management IC) Monitor reports "low voltage warning".  Fix
+    chain:
       - `PSU_MAX_CURRENT=5000` in EEPROM
       - `usb_max_current_enable=1` in `/boot/firmware/config.txt`
       - 52Pi PD Power Extension Board becomes the canonical Pi
@@ -326,15 +345,34 @@ PART II - ELECTRICAL
       - Keep a spare OFFICIAL CanaKit PSU on hand.
 
 --------------------------------------------------------------
-20. ***WIRE GAUGE FROM MEASURED PEAK CURRENT, NOT NAMEPLATE***
-    (2025.11.30)
-    Rules Stormy uses:
-      LiPo bus (up to 15A):        14 AWG (RoboClaw capacity)
-      Bus -> buck feed (10A/<6ft): 16 AWG (< 3% drop)
-      Bus -> RoboClaw:             14 AWG silicone
-      Bus -> headlight switch:     20 AWG solder joints ok
-    Many bags of "12-16V robot wire" are undersized.  Measure
-    peak, not nominal.
+20. ***WIRE GAUGE FROM MEASURED PEAK CURRENT, NOT
+    NAMEPLATE***  (2025.11.30; scope corrected 2026.09.06)
+    Size wire from the peak current a load will actually
+    draw, not from its continuous rating or its supply's
+    nameplate.  A motor rated 2 A continuous can spike to
+    5.5 A stalled (item 21); a buck converter charging its
+    input caps can transiently pull far more than its
+    steady-state feed (item 16).
+    Gauges installed on Stormy today (representative of the
+    current build, NOT a fixed spec - each build should
+    measure its own peaks and choose accordingly):
+      LiPo bus (peaks up to 15 A):   14 AWG
+      Bus -> RoboClaw:               14 AWG silicone
+      Bus -> headlight switch:       20 AWG
+    Stormy has no standalone buck converter in the power
+    path - the 52Pi PD Power Extension Board is the Pi's
+    only regulator (item 24; see Manual Chapter 3.1 for the
+    authoritative topology).  If you add a buck converter
+    downstream of the LiPo, size its feed for the inrush
+    its input caps will pull, not for the load's continuous
+    draw.
+    Scope note (James 2026.09.06):  the original wording
+    presented these gauges as "Rules Stormy uses" - they
+    are actually what happens to be installed today, not
+    a house standard.  An earlier draft also carried a
+    "many bags of '12-16V robot wire' are undersized"
+    quip; provenance unclear and not from James, so
+    removed.
 
 --------------------------------------------------------------
 21. ***ROBOCLAW CURRENT LIMIT DERIVES FROM MOTOR STALL, NOT
@@ -346,21 +384,35 @@ PART II - ELECTRICAL
     Pololu #4753: stall 5.5A -> continuous 1.83A -> limit 2.7A.
     Setting the RoboClaw's per-channel limit near its 7A
     hardware max (6.5A on Stormy pre-fix) lets a stalled motor
-    cook itself before the OC trip fires.  This IS Flag 11 -
-    the motor burnout of 2026.05.08.  See also item 40 (The
-    Hairball Lesson).
+    cook itself before the overcurrent trip fires.  This IS
+    Flag 11 - the motor burnout of 2026.05.08.  See also
+    item 26 (The Hairball Lesson).
 
 --------------------------------------------------------------
-22. ***COMPLETE POWER PROTECTION IS FUSE + STPS DIODE + SHUNT
-    REGULATOR - ALL THREE, NOT ANY ONE***  (2025.12.07 install
-    of 3779; external-resistor guidance added 2026.07.26)
-    Panel-mount slow-blow fuse: cuts fault currents.
-    STPS10L25D across the fuse: covers the fuse-blown case when
-    the shunt loses its bus reference.
-    Pololu 3779 (17.0V trip on 4S LiPo, ONBOARD adjustable pot
-    sets the trip threshold; NO external shunt resistor on
-    Stormy): dumps regen energy in NORMAL operation.
-    STPS and 3779 are COMPLEMENTARY.  Do not skip either.
+22. ***POWER PROTECTION: FUSE + SOURCE-OR-ING DIODES +
+    SHUNT REGULATOR***  (2025.12.07 install of 3779;
+    external-resistor guidance added 2026.07.26; STPS role
+    corrected 2026.09.06)
+    Panel-mount slow-blow fuse: cuts fault currents on the
+    shared bus.
+    STPS10L25D Schottky diodes - SOURCE OR-ING FOR HOT-SWAP:
+    one on the LiPo positive lead, one on the bench-PSU
+    positive lead, both cathodes tied to the shared bus.
+    Purpose is source OR-ing so battery and bench PSU can
+    both be attached (drydock work) without either back-
+    feeding the other.
+    Pololu 3779 shunt regulator (17.0 V trip on 4S LiPo,
+    ONBOARD adjustable pot sets the trip threshold; NO
+    external shunt resistor on Stormy): dumps regenerative-
+    braking energy to ground on the bus.
+    Light-robot back-EMF budget:  on a ~3.2 kg indoor robot
+    that decelerates over a fraction of a second, the
+    energy the drivetrain returns to the bus is small
+    enough that the 3779 shunt alone handles it.  No
+    braking-resistor bank, no dedicated dump load.  A
+    heavier or faster platform should verify with a scope
+    across the bus during a hard decel and add resistance
+    if the shunt's trip point stays clamped.
 
     When to add the OPTIONAL external shunt resistor:
       The onboard adjustable trims the TRIP THRESHOLD (bus
@@ -377,6 +429,15 @@ PART II - ELECTRICAL
       typical indoor speeds, none needed.  Rule: install the
       external resistor only when the shunt MOSFET gets hot
       in normal use.
+
+    Scope note (James 2026.09.06):  earlier wording described
+    a single STPS10L25D "across the fuse" as a fuse-blown-
+    case backup.  That was never the actual role.  The real
+    arrangement is a source OR-ing PAIR (one STPS on each
+    input's positive lead) so battery and bench PSU can
+    coexist during hot-swap without back-charging each
+    other.  Manual Chapter 3.1 topology annotation and
+    notes updated in the same pass.
 
 --------------------------------------------------------------
 23. ***REVERSED-POLARITY SANITY TEST***  (2026.03.21)
@@ -412,14 +473,15 @@ PART III - MECHANICAL
     Domestic-floor robots live in a hairball habitat.  Hair
     winds around drive shafts and caster wheels.  A wound-up
     drive shaft raises the effective load beyond the motor's
-    continuous rating.  If your OC limit is too permissive
-    (item 21), you cook the winding.  RULES:
+    continuous rating.  If your overcurrent limit is too
+    permissive (item 21), you cook the winding.  RULES:
       - Check drive shafts and caster wheels for hair
         BEFORE EVERY drive session.
       - "Take a lesson from your vacuum cleaner and check
         for hairballs." (James, verbatim)
       - Combine with item 21 (proper current limit) so a
-        detected hair-jam trips OC before winding damage.
+        detected hair-jam trips the overcurrent cut-off
+        before winding damage.
 
 --------------------------------------------------------------
 27. ***CAST ACRYLIC ONLY FOR LASER CUTTING - NEVER
@@ -643,7 +705,7 @@ PART IV - SOFTWARE & CONFIG TRAPS
     East) toward +Y (map North).  Not clockwise-from-North like
     a compass.  Example poses that work:
       dock in study:                 0.0   0.0    0.0
-      bedroom door facing south:    19.4  -1.05  +pi/2
+      bedroom door facing south:    19.4  -1.05  -pi/2
       hallway facing west:           X     Y     +pi
 
 --------------------------------------------------------------
@@ -657,7 +719,7 @@ PART IV - SOFTWARE & CONFIG TRAPS
     Occasionally `ros2 launch` traps SIGINT and refuses to die.
     `htop` -> find the ros2 python launcher -> `kill -9 <pid>`.
     Cleanup rest via `pkill -9 -f articubot_one` if children
-    survive.  See also item 53 (zombie cleanup drill).
+    survive.  See also item 47 (zombie cleanup drill).
 
 
 ================================================================
@@ -696,14 +758,14 @@ PART V - ROS 2 OPERATIONS
     kill for a truly clean list.
 
 --------------------------------------------------------------
-49. ***LATCHED TOPICS REQUIRE MATCHING QoS***  (2026.06.20 -
-    keepout mask)
+49. ***LATCHED TOPICS REQUIRE MATCHING QoS (QUALITY OF
+    SERVICE)***  (2026.06.20 - keepout mask)
     Symptom: subscribed to `/map` or `/keepout_filter_mask` in
     RViz, no data displayed even though publisher is running.
     Cause: RViz defaults to Best-Effort Reliability, but
     latched topics use Reliable + Transient-Local Durability.
     Best-Effort subscribers DISCARD the latched sample during
-    the DDS handshake.
+    the DDS (Data Distribution Service) handshake.
     Fix: in the RViz display Properties, set:
       Reliability = Reliable
       Durability  = Transient Local
@@ -730,14 +792,17 @@ PART V - ROS 2 OPERATIONS
     First check: grep every launch file for `use_sim_time`.
     Any node with `use_sim_time: true` on a real robot publishes
     sim-clock timestamps that don't match the wall-clock TF
-    stream.  Set to false everywhere.
+    (transform) stream.  Set to false everywhere.
 
 --------------------------------------------------------------
 52. ***CROSS-HOST TIME SYNC IS NECESSARY, NOT SUFFICIENT***
     (2025.10.24 - Pito Salas's `handy net_latency` tool)
     On multi-machine ROS setups, install `chrony` or
-    `systemd-timesyncd` on ALL machines.  Then verify skew with
-    Pito Salas's tool
+    `systemd-timesyncd` on every host that publishes or
+    subscribes to ROS 2 topics.  Utility boxes that only
+    reach the robot via SSH / Foxglove / git do NOT count
+    (their clock drift never enters the ROS graph).  Then
+    verify skew with Pito Salas's tool
     (github.com/Boston-Robot-Hackers/handy):
         ros2 run handy net_latency node1 node2
         ros2 run handy net_latency node2 node1
@@ -748,7 +813,8 @@ PART V - ROS 2 OPERATIONS
 --------------------------------------------------------------
 53. ***DDS IMPLEMENTATION MUST MATCH ACROSS ALL MACHINES***
     (2025.10.24)
-    Set `RMW_IMPLEMENTATION` identically on every host:
+    Set `RMW_IMPLEMENTATION` (RMW = ROS middleware) identically
+    on every host:
         export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
     Mismatched RMWs on the same ROS_DOMAIN sometimes work by
     accident and sometimes silently drop discovery.  Ship
@@ -819,7 +885,9 @@ PART VI - NAV2, SLAM, AMCL
                      [-0.065, 0.145], [-0.237, 0.03],
                      [-0.237, -0.03], [-0.065, -0.145],
                      [0.06, -0.145], [0.123, -0.06]]"
-    Set `MPPI.CostCritic.consider_footprint: true`.  DO NOT
+    Tell Nav2's MPPI (Model Predictive Path Integral)
+    controller to honor the polygon: set
+    `MPPI.CostCritic.consider_footprint: true`.  DO NOT
     combine with `footprint_padding` non-zero at the same time
     (2026.05.18 - made Stormy too shy to leave dock).
 
@@ -829,7 +897,8 @@ PART VI - NAV2, SLAM, AMCL
     Symptom: Nav2 goals arrive 20-25 deg past target heading
     after MPPI approach.
     Fix requires ALL THREE:
-      (a) EKF absolute yaw ON (was velocity-only):
+      (a) EKF (Extended Kalman Filter) absolute yaw ON (was
+          velocity-only):
             imu0_config row 2 [roll, pitch, YAW]:
               true, true, TRUE   (was false)
           EKF yaw covariance drops from ~109 rad^2 to ~0.002.
@@ -878,7 +947,8 @@ PART VI - NAV2, SLAM, AMCL
       clearing.
 
 --------------------------------------------------------------
-62. ***AMCL vs SLAM MODE - PICK THE RIGHT ONE***  (2026.04.30)
+62. ***AMCL (ADAPTIVE MONTE CARLO LOCALIZATION) vs SLAM
+    MODE - PICK THE RIGHT ONE***  (2026.04.30)
     SLAM Toolbox in mapping mode:  BUILDS and updates map.
     SLAM Toolbox in localization:  BUILDS ON existing map,
                                     can add new geometry.
@@ -960,8 +1030,8 @@ PART VII - PERCEPTION (LIDAR, CAMERA, URDF, SIM)
 
 --------------------------------------------------------------
 68. ***OAK-D IMU IS PUBLISHED BY THE DRIVER, DO NOT ALSO
-    DECLARE IN URDF***  (2025.12.14; scope note added
-    2026.07.26)
+    DECLARE IN URDF (UNIFIED ROBOT DESCRIPTION FORMAT)***
+    (2025.12.14; scope note added 2026.07.26)
     `depthai_ros_driver` publishes `oak_imu_frame` as a
     STATIC TF from the camera's factory calibration EEPROM
     (translation (0, -0.015, -0.014) m relative to camera
@@ -969,8 +1039,9 @@ PART VII - PERCEPTION (LIDAR, CAMERA, URDF, SIM)
     creates a conflicting TF and confuses RViz2.  Just don't.
 
     Scope note (James 2026.07.26):  On Stormy the OAK-D IMU
-    was TRIED as the robot's primary IMU source and
-    ABANDONED for unclear reasons.  BNO085 is authoritative
+    was TRIED as the robot's primary IMU source; implementing
+    it proved difficult and never worked, so it was
+    ABANDONED.  BNO085 is authoritative
     for EKF fusion.  The advice above still applies to
     anyone who wants to enable the OAK-D IMU as an
     auxiliary source (the driver publishes the frame
@@ -1105,7 +1176,8 @@ PART VIII - NETWORKING & MULTI-HOST ROS 2
     of the other's 135.  `Frame [map] does not exist` in RViz.
     Cause: TP-Link Deco firmware drops multicast between wired
     and wireless clients (and between mesh nodes).  DDS SPDP
-    heartbeats never arrive.  Unicast (ping, SSH, TCP) works
+    (Simple Participant Discovery Protocol) heartbeats never
+    arrive.  Unicast (ping, SSH, TCP) works
     the whole time, masking root cause.
     Fix: switch CycloneDDS to UNICAST-ONLY discovery with an
     explicit peer list.  See item 79.
@@ -1428,7 +1500,8 @@ PART X - TOOLS, ECOSYSTEM, PEOPLE
 96. ***WIMBLE'S `roboclaw_studio` REPLACES BASICMICRO
     MOTION STUDIO ON LINUX***  (2026.03.17)
     Motion Studio is Windows-only and refuses to set LBmin
-    below 5.5 V on the 2x7A V5c.  `roboclaw_studio` is a Python
+    (logic-battery minimum) below 5.5 V on the 2x7A V5c.
+    `roboclaw_studio` is a Python
     PyQt6 tool that talks to the RoboClaw via serial, can send
     the SETMINLB / SETMAXLB opcodes (commands 26, 27) or the
     newer SETLOGICVOLTAGES (command 58) - see item 97.
@@ -1563,7 +1636,7 @@ Symptom                                            Items to check
     timestamp earlier than transform cache"        51, 52, 53, 66
 Wheel does honey-bee-dance, one motor jiggles      17, 21
 Motor cooks silently                              21, 26
-Encoder reads ~half of CPR regardless of pos       17
+Encoder reads ~half of counts-per-revolution (CPR)  17
 RoboClaw 3-red-blink at rest                       97
 Motors don't respond to joystick                   36, 37
 Nav2 goal heading overshoot                        60
@@ -1571,7 +1644,6 @@ Robot too shy to leave dock                        58, 59, 65
 SLAM drift accumulates on far-room trip            56
 AMCL delocalizes in featureless area               64
 Doorway pinch prevents planning                    57, 58, 59
-"Sensor origin out of bounds" costmap error        (velocity units bug)
 IMU orientation resets differently every boot      42
 Pi 5 low-voltage warning at splash / reboots       19, 24
 Bench PSU voltage sags with buck converter         16
@@ -1587,7 +1659,6 @@ Foxglove Studio connection failed                  82, 83
 RViz keepout mask / map missing                    49
 Config edit didn't take effect                     40
 Driver won't compile after apt update              38, 76
-`git push` rejected as diverged                    (git rebase drill)
 YAML parse error "Sequences cannot be key"         35
 Boot fails after AI-suggested kernel install       7
 `sudo mount -t exfat` fails "can't read superblock" 104
@@ -1606,13 +1677,16 @@ Bulk chronology of the field-note items above:
   2025.10.21  item 51 (use_sim_time on real hardware)
   2025.10.24  items 52, 53, 98 (time sync, DDS, net_latency)
   2025.11.20  item 28 (belt-driven LiDAR wear)
-  2025.11.23  items 85, 86, 87 (NVMe backup discipline)
+  2025.11.23  items 85, 86, 87, 90 (NVMe backup discipline;
+                                    pre-hw-pivot imaging rule)
   2025.11.27  item 7  (CP210x kernel saga, AI boundary rule)
   2025.11.30  items 19, 20, 24, 25 (power crisis + 52Pi)
   2025.12.07  item 22 (shunt regulator installed)
   2025.12.08  item 8  (AI overcomplication)
   2025.12.14  items 68, 69 (OAK-D IMU + parent_frame)
   2025.12.19  items 74, 75 (LDLIDAR rotation + height)
+  2026.01.02  item 67 (SLAM Toolbox start-delay is normal,
+                       per Sergei)
   2026.01.10  item 27 (cast vs extruded acrylic)
   2026.01.11  items 29, 30 (Powerpole crimper, hand tap)
   2026.01.13  item 32 (Sergei's IMU placement rule)
@@ -1624,9 +1698,13 @@ Bulk chronology of the field-note items above:
   2026.03.02  items 47, 48 (zombie process cleanup drill)
   2026.03.04  item 1  (context.txt discipline BORN)
   2026.03.07  items 70, 71, 72 (Gazebo Harmonic mesh + camera)
-  2026.03.09  item 83 (localhost from Windows)
-  2026.03.14  items 36, 37, 60, 64 (12-bug marathon +
-                                    AMCL tuning + heading)
+  2026.03.09  items 41, 83 (old-workspace source-line trap;
+                            localhost from Windows)
+  2026.03.14  items 36, 37, 42, 50, 60, 64 (12-bug marathon,
+                                            IMU YAML nest,
+                                            waypoint follower,
+                                            AMCL tuning,
+                                            heading fix)
   2026.03.16  item 36 (Twist / TwistStamped v2)
   2026.03.17  item 96 (roboclaw_studio install)
   2026.03.20  item 17 (encoder-killer mystery, both boards)
@@ -1640,7 +1718,7 @@ Bulk chronology of the field-note items above:
   2026.04.12  item 60 (heading overshoot fix - complete)
   2026.04.17  item 56 (loop-closure lesson)
   2026.04.23  item 94 (ros2-copilot-skills)
-  2026.04.30  item 62 (autonomous frontier exploration)
+  2026.04.30  item 62 (AMCL vs SLAM mode selection)
   2026.05.02  items 59, 61 (polygon footprint + OAK-D points)
   2026.05.04  item 92 (kill-switch spare)
   2026.05.08  items 21, 26 (motor burnout + Hairball Lesson)
@@ -1650,14 +1728,16 @@ Bulk chronology of the field-note items above:
   2026.05.31  item 15 (short-focused-chats testimony)
   2026.06.01  item 84 (SSH keepalive triple)
   2026.06.04  items 2, 3, 88 (rsync disaster + rules)
-  2026.06.06  items 6, 11 (verify model, handoff doctrine)
+  2026.06.06  item 11 (handoff-note doctrine, follow-up)
   2026.06.08  items 6, 38 (GPT-4o discovery + keyring binary)
-  2026.06.15  items 25, 33 (USB hub silent failure)
+  2026.06.15  items 25, 33, 76 (USB hub silent failure;
+                                depthai v3 package rename)
   2026.06.20  items 36, 49, 82 (TwistStamped v3, keepout QoS,
                                 Foxglove bridge port)
   2026.06.27  item 77 (Pi 5 2.4 GHz WiFi is broken)
-  2026.06.29  items 73, 89 (RViz multi-visual bug,
-                            dotfiles repo)
+  2026.06.29  items 73, 89, 91 (RViz multi-visual bug,
+                                dotfiles repo, restore
+                                doctrine)
   2026.07.08  item 81 (route metric outbound only)
   2026.07.10  items 78, 79, 80 (Deco multicast drop,
                                 CycloneDDS unicast fix)
@@ -1669,10 +1749,13 @@ Bulk chronology of the field-note items above:
 END OF STINGRAY FIELD NOTES
 ================================================================
 Compiled from Stingray_Curation_Notes.txt (8014 lines, 17
-chunks) which in turn was distilled from Stingray Experience.txt
-(44,832 lines, 235 stardated entries, 2023.05.06 - 2026.07.11).
-104 items across 10 parts.  Each cited to the stardate it was
-learned.  Companion Builder's Manual pending.
+chunks) which in turn was distilled from Stingray
+Experience.wpd (source diary, 832 pp WordPerfect, still
+active) exported to Stingray Experience.txt (44,832 lines,
+235 stardated entries, 2023.05.06 - 2026.07.11) for text
+processing.
+104 items across 10 parts.  Each cited to the stardate it
+was learned.  Companion: Stingray_Builders_Manual.txt v1.0.
 
 "Not a destination, it's a journey."
                                   - James H Phelan, MD
