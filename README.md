@@ -3340,17 +3340,16 @@ already formatted exFAT with the STORMYBAK label (or
 whatever label you chose in Section B).
 
 A1.  Plug the HDD into Stormy.
-     Use a blue USB 3.0 port DIRECTLY on the Pi 5, not through
-     a hub.  Bus-powered HDDs disconnect mid-copy over long
-     runs (Field Note item 86).  If your enclosure has its
-     own AC adapter, use it.
-     Wait ~10 seconds for the Pi to enumerate the device.
+     - Use a blue USB 3.0 port DIRECTLY on the Pi 5.  Not through
+       a hub - bus-powered HDDs disconnect mid-copy over long
+       runs (Field Note item 86).
+     - If your enclosure has its own AC adapter, use it.
+     - Wait ~10 seconds for the Pi to enumerate the device.
 
-A2.  Open a shell (SSH from your workstation, or a terminal
-     at Stormy's console).
-     If you SSH in, keep the window open for the full ~40 min
-     run.  If you want SSH-drop protection, wrap the session
-     in tmux:
+A2.  Open a shell on Stormy.  SSH from your workstation, or use
+     Stormy's own console.  Optional: wrap in tmux so an SSH drop
+     doesn't kill the 40-minute job.
+
          sudo apt install -y tmux     # once, if not present
          tmux new -s backup           # detach: Ctrl-b then d
                                       # reattach: tmux attach -t backup
@@ -3370,48 +3369,53 @@ A3.  Locate the HDD.  Run:
      If any of those is off, STOP.  A wrong device letter later is
      disastrous.
 
-A4.  Mount the HDD.
-     Over SSH there is no graphical auto-mount and
-     `/media/ubuntu/` is typically empty; you must mount by
-     hand.  Do NOT pass `-t exfat` - the kernel exfat driver
-     autoloads and the userspace `mount.exfat` helper is not
-     installed on Ubuntu 24.04 (Field Note item 104).
+A4.  Mount the HDD.  Run:
 
          sudo mkdir -p /mnt/backup
          sudo mount /dev/sda1 /mnt/backup
-         mount | grep sda1     # verify: type exfat, NOT fuseblk
-         df -h /mnt/backup     # confirm ~free space
-         ls -lh /mnt/backup    # confirm previous week's images
+         mount | grep sda1
+         df -h /mnt/backup
+         ls -lh /mnt/backup
 
-     Free space needed: ~15 GB for a fresh backup pair.  A
-     150 GB drive holds ~8-10 weekly generations before you
-     start deleting old ones.
+     Confirm before continuing:
+       - `mount | grep sda1` prints  type exfat  (NOT fuseblk).
+       - `df -h` shows ~15 GB or more free (need ~15 GB per pair;
+         a 150 GB drive holds ~8-10 weekly generations).
+       - `ls -lh` shows the previous week's images - proves you
+         mounted the right drive.
+     Do NOT pass `-t exfat` on the mount command.  The kernel
+     exfat driver autoloads on Ubuntu 24.04; `-t exfat` invokes
+     the userspace helper `mount.exfat` which is not installed
+     (Field Note item 104).
 
-A5.  Pick timestamped filenames.
-     Convention: `nvme_boot_YYYY-MM-DD.img.gz` and
-     `nvme_root_YYYY-MM-DD.img.gz`.  Timestamps prevent
-     overwriting old good backups if today's run fails
-     partway through.
+A5.  Filenames (nothing to run - just note the convention):
 
-A6.  Boot partition first (~2 minutes).
-     Do the small partition first so a pipeline problem shows
-     up in 2 minutes instead of 40.  The `sudo sh -c` wrapper
-     is required so the `>` redirection runs as root - `sudo`
-     alone does not extend past the pipe (Field Note item 39).
+         /mnt/backup/nvme_boot_YYYY-MM-DD.img.gz
+         /mnt/backup/nvme_root_YYYY-MM-DD.img.gz
+
+     Timestamps prevent overwriting last week's good backups if
+     today's run fails partway through.
+
+A6.  Boot partition first (~2 minutes).  Run:
 
          sudo sh -c 'dd if=/dev/nvme0n1p1 bs=4M \
                          conv=sync,noerror status=progress \
                          | gzip -1 \
                          > /mnt/backup/nvme_boot_$(date +%F).img.gz'
 
-     Verify:
+     Then verify:
+
          gzip -t /mnt/backup/nvme_boot_$(date +%F).img.gz && echo BOOT_OK
          ls -lh /mnt/backup/nvme_boot_$(date +%F).img.gz
-     Expected file size: ~150-170 MB.  If it's much smaller,
-     stop.
 
-A7.  Root partition (~40 minutes).
-     Same recipe, larger partition:
+     Expected: `BOOT_OK` and file size ~150-170 MB.  If much
+     smaller, STOP.
+     Boot-first order catches pipeline problems in 2 minutes
+     instead of 40.  The `sudo sh -c` wrapper is required so the
+     `>` redirection runs as root - `sudo` alone does not extend
+     past the pipe (Field Note item 39).
+
+A7.  Root partition (~40 minutes).  Run:
 
          sudo sh -c 'dd if=/dev/nvme0n1p2 bs=4M \
                          conv=sync,noerror status=progress \
@@ -3419,31 +3423,34 @@ A7.  Root partition (~40 minutes).
                          > /mnt/backup/nvme_root_$(date +%F).img.gz'
 
      dd prints a live progress line every second or so.
-     Do NOT close the terminal, do NOT let the laptop sleep,
-     do NOT bump the USB cable.
+     - Do NOT close the terminal.
+     - Do NOT let the laptop sleep.
+     - Do NOT bump the USB cable.
      Expected: 238 GB read, ~13-15 GB written, ~110-115 MB/s,
      ~35-40 minutes.  Rate below ~50 MB/s means something is
      wrong (USB 2 fallback, thermal throttle, failing HDD).
 
-     Verify:
+     Then verify:
+
          gzip -t /mnt/backup/nvme_root_$(date +%F).img.gz && echo ROOT_OK
          ls -lh /mnt/backup/nvme_root_$(date +%F).img.gz
          df -h /mnt/backup
 
-A8.  Unmount cleanly, THEN unplug.
+A8.  Unmount cleanly, THEN unplug.  Run:
+
          sudo sync
          sudo umount /mnt/backup
-         mount | grep sda1     # must print nothing
-     Only after `mount | grep` is silent is it safe to
-     physically unplug the HDD.  Yanking a mounted exFAT
-     drive can corrupt the filesystem catalog.
+         mount | grep sda1
 
-A9.  Record it.
-     Note the date, both file sizes, and the observed MB/s
-     for the root run in whatever your backup log is (this
-     manual's companion memory file `stingray-backup-log.md`
-     if you have it, else a paper notebook).  A slow trend
-     is the earliest warning of a failing HDD.
+     `mount | grep sda1` must print NOTHING before you physically
+     unplug the HDD.  Yanking a mounted exFAT drive can corrupt
+     the filesystem catalog.
+
+A9.  Log it.  Record date, both file sizes, and the observed
+     MB/s for the root run in whatever your backup log is (this
+     manual's companion memory file `stingray-backup-log.md` if
+     you have it; a paper notebook otherwise).  A slow trend in
+     MB/s is the earliest warning of a failing HDD.
 
 #### Section B - One-time drive format
 
