@@ -3302,60 +3302,191 @@ including the post-Windows-reinstall recovery playbook.
 20.4  NVMe full-disk backup recipe
 ----------------------------------------------------------------
 
-Placeholder note: `<mount>` in the commands below is the
-mount-point directory name that GNOME assigns your external
-USB backup drive under /media/ubuntu/ (the filesystem label
-if the drive has one, otherwise its UUID).  Find yours with:
+Weekly Tier-2 backup of Stormy's NVMe SSD to an external
+exFAT USB HDD.  Two flavors below:
 
-    lsblk -o NAME,SIZE,LABEL,MOUNTPOINT
-    ls /media/ubuntu/
+  Section A - the full step-by-step for a weekly backup
+              (this is what you do most of the time).
+  Section B - one-time drive format (only when you first
+              prepare a new backup HDD, or when you retire
+              an old one).
+  Section C - restore.
 
-Example real values seen on Stormy: `BACKUP2026`,
-`Stormy_Backups`, `1A2B-3C4D`.  Substitute yours everywhere
-`<mount>` appears (Setup, Backup, Verify).
+Reference values used throughout (Stormy 2026-09):
+    Backup HDD label:  STORMYBAK  (exFAT)
+    Backup HDD device: /dev/sda   (partition /dev/sda1)
+    Mount point:       /mnt/backup
+    NVMe boot part:    /dev/nvme0n1p1  (~500 MB, mounted /boot/firmware)
+    NVMe root part:    /dev/nvme0n1p2  (~238 GB, mounted /)
+    Files written:     /mnt/backup/nvme_boot_YYYY-MM-DD.img.gz
+                       /mnt/backup/nvme_root_YYYY-MM-DD.img.gz
 
-Setup - one-time drive format (external USB drive, all data
-lost):
+Substitute your own device letters and mount label if
+different; verify with `lsblk` and `sudo blkid` before
+running any `dd` command.
 
-    # Unmount any auto-mounted partition first:
-    sudo umount /media/ubuntu/<mount>
-    # Wipe partition table:
+----------------------------------------------------------------
+Section A - Weekly backup, step by step
+----------------------------------------------------------------
+
+Assumes the HDD from the previous week is available and
+already formatted exFAT with the STORMYBAK label (or
+whatever label you chose in Section B).
+
+A1.  Plug the HDD into Stormy.
+     Use a blue USB 3.0 port DIRECTLY on the Pi 5, not through
+     a hub.  Bus-powered HDDs disconnect mid-copy over long
+     runs (Field Note item 86).  If your enclosure has its
+     own AC adapter, use it.
+     Wait ~10 seconds for the Pi to enumerate the device.
+
+A2.  Open a shell (SSH from your workstation, or a terminal
+     at Stormy's console).
+     If you SSH in, keep the window open for the full ~40 min
+     run.  If you want SSH-drop protection, wrap the session
+     in tmux:
+         sudo apt install -y tmux     # once, if not present
+         tmux new -s backup           # detach: Ctrl-b then d
+                                      # reattach: tmux attach -t backup
+
+A3.  Locate the HDD and confirm its filesystem.
+         lsblk -o NAME,SIZE,LABEL,FSTYPE,MOUNTPOINT
+         sudo blkid /dev/sda1
+     Expect `TYPE="exfat"` and a LABEL you recognize (on Stormy
+     the label is STORMYBAK).  Note the device path - it is
+     usually /dev/sda1 but a second USB drive would shift it
+     to /dev/sdb1.  DOUBLE-CHECK - a wrong letter here would
+     be disastrous later.
+
+     Also verify the NVMe layout is what we think:
+         lsblk -o NAME,SIZE,MOUNTPOINT /dev/nvme0n1
+     Expected two partitions: nvme0n1p1 on /boot/firmware and
+     nvme0n1p2 on /.  If either is wrong, STOP and diagnose
+     before proceeding.
+
+A4.  Mount the HDD.
+     Over SSH there is no graphical auto-mount and
+     `/media/ubuntu/` is typically empty; you must mount by
+     hand.  Do NOT pass `-t exfat` - the kernel exfat driver
+     autoloads and the userspace `mount.exfat` helper is not
+     installed on Ubuntu 24.04 (Field Note item 104).
+
+         sudo mkdir -p /mnt/backup
+         sudo mount /dev/sda1 /mnt/backup
+         mount | grep sda1     # verify: type exfat, NOT fuseblk
+         df -h /mnt/backup     # confirm ~free space
+         ls -lh /mnt/backup    # confirm previous week's images
+
+     Free space needed: ~15 GB for a fresh backup pair.  A
+     150 GB drive holds ~8-10 weekly generations before you
+     start deleting old ones.
+
+A5.  Pick timestamped filenames.
+     Convention: `nvme_boot_YYYY-MM-DD.img.gz` and
+     `nvme_root_YYYY-MM-DD.img.gz`.  Timestamps prevent
+     overwriting old good backups if today's run fails
+     partway through.
+
+A6.  Boot partition first (~2 minutes).
+     Do the small partition first so a pipeline problem shows
+     up in 2 minutes instead of 40.  The `sudo sh -c` wrapper
+     is required so the `>` redirection runs as root - `sudo`
+     alone does not extend past the pipe (Field Note item 39).
+
+         sudo sh -c 'dd if=/dev/nvme0n1p1 bs=4M \
+                         conv=sync,noerror status=progress \
+                         | gzip -1 \
+                         > /mnt/backup/nvme_boot_$(date +%F).img.gz'
+
+     Verify:
+         gzip -t /mnt/backup/nvme_boot_$(date +%F).img.gz && echo BOOT_OK
+         ls -lh /mnt/backup/nvme_boot_$(date +%F).img.gz
+     Expected file size: ~150-170 MB.  If it's much smaller,
+     stop.
+
+A7.  Root partition (~40 minutes).
+     Same recipe, larger partition:
+
+         sudo sh -c 'dd if=/dev/nvme0n1p2 bs=4M \
+                         conv=sync,noerror status=progress \
+                         | gzip -1 \
+                         > /mnt/backup/nvme_root_$(date +%F).img.gz'
+
+     dd prints a live progress line every second or so.
+     Do NOT close the terminal, do NOT let the laptop sleep,
+     do NOT bump the USB cable.
+     Expected: 238 GB read, ~13-15 GB written, ~110-115 MB/s,
+     ~35-40 minutes.  Rate below ~50 MB/s means something is
+     wrong (USB 2 fallback, thermal throttle, failing HDD).
+
+     Verify:
+         gzip -t /mnt/backup/nvme_root_$(date +%F).img.gz && echo ROOT_OK
+         ls -lh /mnt/backup/nvme_root_$(date +%F).img.gz
+         df -h /mnt/backup
+
+A8.  Unmount cleanly, THEN unplug.
+         sudo sync
+         sudo umount /mnt/backup
+         mount | grep sda1     # must print nothing
+     Only after `mount | grep` is silent is it safe to
+     physically unplug the HDD.  Yanking a mounted exFAT
+     drive can corrupt the filesystem catalog.
+
+A9.  Record it.
+     Note the date, both file sizes, and the observed MB/s
+     for the root run in whatever your backup log is (this
+     manual's companion memory file `stingray-backup-log.md`
+     if you have it, else a paper notebook).  A slow trend
+     is the earliest warning of a failing HDD.
+
+----------------------------------------------------------------
+Section B - One-time drive format
+----------------------------------------------------------------
+
+Only do this the first time you use a new backup HDD, or
+when you deliberately want to wipe an existing one.  ALL
+DATA on the drive is lost.
+
+    # If GNOME auto-mounted anything, unmount it first:
+    sudo umount /media/ubuntu/*  2>/dev/null || true
+    sudo umount /mnt/backup      2>/dev/null || true
+
+    # Wipe partition table and create one whole-disk partition:
     sudo parted /dev/sda mklabel gpt
     sudo parted /dev/sda mkpart primary 0% 100%
     sudo partprobe /dev/sda
-    # exFAT is Windows AND Linux readable:
-    sudo apt install exfatprogs
-    sudo mkfs.exfat /dev/sda1
 
-Backup - the working command (note `sudo sh -c` wraps the
-whole pipeline so the redirection runs as root - Field
-Note item 39):
+    # Install exFAT format tool, then format with a label:
+    sudo apt install -y exfatprogs
+    sudo mkfs.exfat -L STORMYBAK /dev/sda1
 
-    sudo sh -c 'dd if=/dev/nvme0n1p2 bs=4M \
-                    conv=sync,noerror status=progress | gzip -1 \
-                    > /media/ubuntu/<mount>/nvme_root.img.gz'
+    # Optional: verify
+    sudo blkid /dev/sda1
 
-    # ~2250 s (~38 min) at ~115 MB/s for 238 GB
-    # ~13 GB compressed for a fresh Ubuntu install
+Then proceed to Section A step A4 (mount) and onward.
 
-    # ALSO back up the boot partition (500 MB, ~2 min):
-    sudo sh -c 'dd if=/dev/nvme0n1p1 bs=4M \
-                    conv=sync,noerror status=progress | gzip -1 \
-                    > /media/ubuntu/<mount>/nvme_boot.img.gz'
+exFAT is chosen because it is readable on Linux + Windows +
+macOS, supports arbitrarily large files (FAT32 truncates at
+4 GB - Field Note item 87), and needs no journaling that
+would slow the ~13 GB write.
 
-Verify integrity:
-    gzip -t /media/ubuntu/<mount>/nvme_root.img.gz && echo OK
-    gzip -t /media/ubuntu/<mount>/nvme_boot.img.gz && echo OK
+----------------------------------------------------------------
+Section C - Restore
+----------------------------------------------------------------
 
-Restore (from a booted rescue system):
-    gunzip -c /path/to/nvme_root.img.gz \
+From a booted rescue system with the failing SSD replaced
+and the backup HDD plugged in and mounted at /mnt/backup:
+
+    # Root partition:
+    gunzip -c /mnt/backup/nvme_root_YYYY-MM-DD.img.gz \
         | sudo dd of=/dev/nvme0n1p2 bs=4M status=progress
-    gunzip -c /path/to/nvme_boot.img.gz \
+
+    # Boot partition:
+    gunzip -c /mnt/backup/nvme_boot_YYYY-MM-DD.img.gz \
         | sudo dd of=/dev/nvme0n1p1 bs=4M status=progress
 
-USB drive MUST be on a powered hub OR directly on a blue
-USB 3.0 port for the ~40 min copy (Field Note item 86).
-Bus-powered drives disconnect mid-copy.
+Order does not matter - do the small one first if you want
+a quick sanity check that the SSD writes cleanly.
 
 ----------------------------------------------------------------
 20.5  Never do this
