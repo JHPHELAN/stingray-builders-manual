@@ -1093,7 +1093,8 @@ PART VII - PERCEPTION (LIDAR, CAMERA, URDF, SIM)
     OWNERSHIP***  (2026.03.07)
     RViz2 ignores URDF `<material>` tags on `<visual>` blocks
     that use .dae meshes.  The material must be embedded in
-    the DAE itself.  Add `<library_effects>` +
+    the DAE (Digital Asset Exchange / Collada) itself.  Add
+    `<library_effects>` +
     `<library_materials>` blocks defining a phong material, and
     bind via `<bind_material>` inside `<instance_geometry>` in
     the visual scene.  Gazebo needs a separate
@@ -1128,7 +1129,7 @@ PART VII - PERCEPTION (LIDAR, CAMERA, URDF, SIM)
 
 --------------------------------------------------------------
 75. ***LDLIDAR PHYSICAL LASER IS 0.0015 m BELOW CYLINDER
-    CENTER***  (2025.12.19)
+    TOP***  (2025.12.19)
     Introduce a separate `base_laser` link in the xacro
     sitting 1.5 mm BELOW the LD19 cylinder's top.  Otherwise
     the scan-plane visualization in RViz2 lands 1.5 mm too high
@@ -1153,7 +1154,7 @@ PART VIII - NETWORKING & MULTI-HOST ROS 2
 ================================================================
 
 --------------------------------------------------------------
-77. ***PI 5 ONBOARD 2.4 GHz WIFI IS BROKEN BY DESIGN***
+77. ***PI 5 ONBOARD 2.4 GHz WIFI IS DISABLED BY DESIGN***
     (2026.06.27, verbatim after a wasted evening)
     "The Raspberry Pi 5 has a well-documented interference
      problem on 2.4 GHz.  Might have brought that up at the
@@ -1234,19 +1235,41 @@ PART VIII - NETWORKING & MULTI-HOST ROS 2
         sudo nmcli con modify netplan-wlan0-<SSID> \
                               connection.autoconnect no
         sudo nmcli dev disconnect wlan0
-    Reverse with `... autoconnect yes` and `nmcli con up ...`.
+    Reverse (re-enable) with:
+        sudo nmcli con modify netplan-wlan0-<SSID> \
+                              connection.autoconnect yes
+        sudo nmcli con up netplan-wlan0-<SSID>
+    (`nmcli con` and its subcommands DO require `sudo` for
+    modify / up / down - only `nmcli dev wifi list` and
+    similar read-only queries run as a plain user.)
 
 --------------------------------------------------------------
 82. ***FOXGLOVE STUDIO NEEDS WebSocket 8765 (foxglove_bridge),
-    NOT 9090 (rosbridge)***  (2026.06.20)
+    NOT 9090 (rosbridge)***  (2026.06.20; assets note
+    corrected 2026.09.07)
     They are DIFFERENT protocols.  Foxglove's native binary
     protocol is faster and lower-latency than rosbridge JSON.
     Bridge:
         ros2 launch foxglove_bridge foxglove_bridge_launch.xml
     Studio connect string:
         ws://<robot-lan-ip>:8765
-    Enable "Assets" on the bridge to serve `package://` URDF
-    meshes remotely.
+
+    Serving `package://` URDF meshes remotely (OPTIONAL,
+    NOT verified on Stormy as of 2026.09.07):
+      By default the bridge REFUSES to fetch `package://`
+      assets - Foxglove Studio shows the URDF frames but
+      not the mesh geometry.  To enable it, pass an
+      `asset_uri_allowlist` regex list to the bridge:
+          ros2 launch foxglove_bridge \
+               foxglove_bridge_launch.xml \
+               asset_uri_allowlist:="['^package://(?:[-\\w%]+/)*[-\\w%.]+\\.(dae|stl|urdf|xacro|mesh|obj|mtl|png|jpg|jpeg)$']"
+      Or set it in a params yaml the launch file loads:
+          asset_uri_allowlist:
+            - "^package://(?:[-\\w%]+/)*[-\\w%.]+\\.(dae|stl|urdf|xacro|mesh|obj|mtl|png|jpg|jpeg)$"
+      Then in Studio's 3D panel enable "Show URDF meshes".
+      James has NOT confirmed doing this on Stormy; the note
+      is retained as the documented mechanism for anyone
+      who wants meshes in the remote Studio view.
 
 --------------------------------------------------------------
 83. ***`localhost` FROM WINDOWS MEANS THE WINDOWS MACHINE -
@@ -1522,8 +1545,9 @@ PART X - TOOLS, ECOSYSTEM, PEOPLE
     fork of roboclaw_driver):
         Send Command 58 SETLOGICVOLTAGES with min=0 (0.0V)
         max=140 (14.0V).  Wide window; defensive against
-        regulator variation.  See `roboclaw_cmd_set_logic_
-        battery_voltages.h` in JHPHELAN/roboclaw_driver@main.
+        regulator variation.  See
+        `roboclaw_cmd_set_logic_battery_voltages.h` in
+        JHPHELAN/roboclaw_driver@main.
 
 --------------------------------------------------------------
 98. ***PITO SALAS'S `handy net_latency` FOR MULTI-MACHINE
@@ -1588,7 +1612,8 @@ PART X - TOOLS, ECOSYSTEM, PEOPLE
        https://github.com/slgrobotics/articubot_one/wiki/
        IMUs-%E2%80%90-Tips-and-Lessons
      Sanity-check axes with the accelerometer / gyro table.
-     For Humble, TX at 29.97 N, -95.19 W (NOAA WMMHR-2025):
+     For Humble, TX at 29.97 N, -95.19 W (NOAA WMMHR-2025
+     - World Magnetic Model High Resolution):
        Declination      +1.67 deg
        Inclination     +58.63 deg
        Total intensity 46,139 nT (46.1 uT)
