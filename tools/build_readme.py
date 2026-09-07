@@ -52,6 +52,10 @@ def slugify(text: str) -> str:
 CHAPTER_RE = re.compile(r"^(CHAPTER\s+\d+|APPENDIX\s+[A-Z])\s+-\s+.+$")
 # Sections: `N.M  Title`, `G.1  file.png`, or `20.3a  Hank Rearden...`.
 SECTION_RE = re.compile(r"^([A-Z0-9]+\.\d+[a-z]?)\s+(.+)$")
+# Sub-section labels like `Section A - Weekly backup`, used inside a
+# chapter section to organize an alternative-branches recipe.  Emitted
+# as H4 (below the H3 section they live under) and kept out of the TOC.
+SUBSECTION_RE = re.compile(r"^Section\s+[A-Z]\s+-\s+.+$")
 DIVIDER_RE = re.compile(r"^[=\-]{40,}\s*$")
 
 
@@ -176,6 +180,22 @@ def convert_body(body_lines: list[str]) -> tuple[list[str], list[tuple[int, str,
                 url = "images/" + urllib.parse.quote(fname)
                 out.append(f"![{fname}]({url})")
                 out.append("")
+            i += 3
+            continue
+
+        # Sub-section heading: divider, `Section X - ...`, divider.
+        # Emit as H4 and skip the TOC.
+        if (
+            DIVIDER_RE.match(line)
+            and i + 2 < n
+            and SUBSECTION_RE.match(body_lines[i + 1].strip())
+            and DIVIDER_RE.match(body_lines[i + 2].strip())
+        ):
+            heading_text = body_lines[i + 1].strip()
+            if out and out[-1] != "":
+                out.append("")
+            out.append(f"#### {heading_text}")
+            out.append("")
             i += 3
             continue
 

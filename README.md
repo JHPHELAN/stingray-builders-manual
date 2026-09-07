@@ -3332,7 +3332,7 @@ Substitute your own device letters and mount label if
 different; verify with `lsblk` and `sudo blkid` before
 running any `dd` command.
 
-## Section A - Weekly backup, step by step
+#### Section A - Weekly backup, step by step
 
 
 Assumes the HDD from the previous week is available and
@@ -3355,20 +3355,20 @@ A2.  Open a shell (SSH from your workstation, or a terminal
          tmux new -s backup           # detach: Ctrl-b then d
                                       # reattach: tmux attach -t backup
 
-A3.  Locate the HDD and confirm its filesystem.
+A3.  Locate the HDD.  Run:
+
          lsblk -o NAME,SIZE,LABEL,FSTYPE,MOUNTPOINT
          sudo blkid /dev/sda1
-     Expect `TYPE="exfat"` and a LABEL you recognize (on Stormy
-     the label is STORMYBAK).  Note the device path - it is
-     usually /dev/sda1 but a second USB drive would shift it
-     to /dev/sdb1.  DOUBLE-CHECK - a wrong letter here would
-     be disastrous later.
-
-     Also verify the NVMe layout is what we think:
          lsblk -o NAME,SIZE,MOUNTPOINT /dev/nvme0n1
-     Expected two partitions: nvme0n1p1 on /boot/firmware and
-     nvme0n1p2 on /.  If either is wrong, STOP and diagnose
-     before proceeding.
+
+     Confirm before continuing:
+       - `blkid` prints  TYPE="exfat"  and  LABEL="STORMYBAK".
+       - Backup HDD is /dev/sda1  (a second USB drive shifts it to
+         /dev/sdb1 - do not assume, check).
+       - NVMe shows  nvme0n1p1 on /boot/firmware  and
+         nvme0n1p2 on /.
+     If any of those is off, STOP.  A wrong device letter later is
+     disastrous.
 
 A4.  Mount the HDD.
      Over SSH there is no graphical auto-mount and
@@ -3445,7 +3445,7 @@ A9.  Record it.
      if you have it, else a paper notebook).  A slow trend
      is the earliest warning of a failing HDD.
 
-## Section B - One-time drive format
+#### Section B - One-time drive format
 
 
 Only do this the first time you use a new backup HDD, or
@@ -3475,7 +3475,7 @@ macOS, supports arbitrarily large files (FAT32 truncates at
 4 GB - Field Note item 87), and needs no journaling that
 would slow the ~13 GB write.
 
-## Section C - Restore
+#### Section C - Restore
 
 
 From a booted rescue system with the failing SSD replaced
