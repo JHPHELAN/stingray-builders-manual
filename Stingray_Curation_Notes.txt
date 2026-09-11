@@ -2568,7 +2568,7 @@ Theme: Remote-access fights (RDP, xrdp, NoMachine, Foxglove).
           generated one changes on reboot).
         - Port 3390 was used (system had shifted from 3389).
         - RDC on Windows: Computer = Stingray:3390 (or
-          192.168.68.66:3390), Show Options -> Username = ubuntu.
+          <ROBOT_WIFI_IP>:3390), Show Options -> Username = ubuntu.
         - The Ubuntu account password is what RDP prompts for.
         - Practical annoyance: after each reboot, must manually
           re-enable Desktop Sharing and re-set password.
@@ -2760,11 +2760,11 @@ Theme: Remote-access fights (RDP, xrdp, NoMachine, Foxglove).
 2025.07.22 tail  Network map documented
   M  ***HOME NETWORK ASSIGNMENTS (Manual sidebar - static IPs
      for the robot ecosystem):***
-        DHCP pool:      192.168.68.50 - 79
-        Router:         (H0bb1tH0l3 SSID, WPA2/WPA3)
-        Stingray:       eth 192.168.68.97   wlan 192.168.68.96
-        LinuxBox:       eth 192.168.68.99   wlan 192.168.68.98
-        HANK REARDEN:   192.168.68.70       (Windows workstation)
+        DHCP pool:      <DHCP_POOL_RANGE>
+        Router:         (<HOME_SSID> SSID, WPA2/WPA3)
+        Stingray:       eth <ROBOT_ETH_IP>   wlan <ROBOT_WLAN_IP>
+        LinuxBox:       eth <LINUXBOX_ETH_IP>   wlan <LINUXBOX_WIFI_IP>
+        HANK REARDEN:   <WORKSTATION_IP>       (Windows workstation)
      Also inventoried: Dagny-Taggart, iPhone, iPad, Roku devices,
      PhelanC, Streaming Sticks, printer NPIAD7AF6.
      Manual: keep this as-is; the addresses are stable and used
@@ -2782,15 +2782,15 @@ Theme: Remote-access fights (RDP, xrdp, NoMachine, Foxglove).
      (Manual sidebar - useful for planning navigation experiments;
      abbreviate to a table):***
        Location                    Signal   Access-point BSSID
-       Study, on desk              -34 dBm  ...16 (channel 4)
-       Study, floor                -42 dBm  ...16
-       Study door                  -56 dBm  ...17 (channel 40)
-       Hallway near stairs         -58 dBm  ...17
-       Hallway near dining         -58 dBm  ...17
+       Room A, on desk              -34 dBm  ...16 (channel 4)
+       Room A, floor                -42 dBm  ...16
+       Room A door                  -56 dBm  ...17 (channel 40)
+       Central hallway (near stairs)         -58 dBm  ...17
+       Central hallway (near dining)         -58 dBm  ...17
        Dining room                 -61 dBm  ...16
        Mid dining room             -67 dBm  ...C7 (channel 40)
-       Kitchen entry               -69 dBm  ...C7   *WORST*
-       Kitchen back door           -66 dBm  ...C7
+       Room D entry               -69 dBm  ...C7   *WORST*
+       Room D back door           -66 dBm  ...C7
        Living room front of TV     -66 dBm  ...C7
        Living room recliners       -70 dBm  ...C7  *WORST*
      Diagnostic commands (Manual):
@@ -3823,8 +3823,8 @@ Theme: Nav2 finally activates end-to-end (MPPI controller + critics).
           urdf/oakd.urdf.xacro
         github.com/jetdillo/oakd_models/blob/main/oakd_description/
           meshes/OAK-D.dae
-     Add jetdillo (Steve "'dillo" Okay, armadilo@gothpunk.com,
-     espressobot@gmail.com) to the collaborator list - HBRC
+     Add jetdillo (Steve "'dillo" Okay, HBRC list) to the
+     collaborator list -
      colleague who published a clean URDF + DAE for the OAK-D.
      Manual: cite this as the OAK-D visualization source; adjust
      the mesh reference to use `package://articubot_one/...` when
@@ -5452,7 +5452,7 @@ Theme: THE 100-DAY SIM+REAL DEBUGGING MARATHON.
      naming is nearly identical.
   M  Foxglove Studio note (Manual): connect from a Windows
      laptop to LinuxBox via
-        Websocket:  ws://192.168.68.99:8765
+        Websocket:  ws://<LINUXBOX_ETH_IP>:8765
      NOT localhost (localhost is the Windows machine).  Get
      the LAN IP with `hostname -I` on the Linux host.  Also
      install `ros-jazzy-foxglove-bridge` and launch
@@ -5529,7 +5529,7 @@ Theme: THE 100-DAY SIM+REAL DEBUGGING MARATHON.
   N  ***MILESTONE (Manual origin chapter, 2026.03.14):***
      After all 12 fixes and IMU alignment: Stormy drove
      Nav2 goals correctly around the ENTIRE HOUSE.  Multiple
-     waypoint sequences including kitchen island traversal.
+     waypoint sequences including a feature-poor open area traversal.
      Manual: this is the "everything wired together works"
      milestone; the 2025.11.10 first-nav was Rviz-inside-map
      only, this is the "Nav2 on the real motor driver on the
@@ -5537,7 +5537,7 @@ Theme: THE 100-DAY SIM+REAL DEBUGGING MARATHON.
 
 2026.03.14-15  (L33900)  Nav2 tuning + Waypoint follower limits
   M  Manual - AMCL tuning that fixed "loses localization
-     behind the kitchen island" (limited unique laser features
+     behind the a feature-poor open area" (limited unique laser features
      in that area):
         max_particles:            5000    (was 2000)
         laser_max_beams:           120    (was  60)
@@ -5754,11 +5754,11 @@ Theme: THREE ARCS PLAYED OUT.
            after 40+ SLAM iterations (Stormy_v1..v43) produced
            drift-accumulated maps with pinch-point doorways too
            tight for AMCL, James imports his CorelDraw house
-           blueprint (2936x1834 CMYK JPG) directly to
-           Stormy_blueprint.pgm via `blueprint_to_pgm.py` -
-           architect-accurate walls, dock calibrated to
-           [-3.407, -8.114] in map frame.  Then hybrid
-           approach: `merge_slam_onto_blueprint.py` stamps
+           blueprint directly to Stormy_blueprint.pgm via
+           `blueprint_to_pgm.py` - architect-accurate walls,
+           dock calibrated to a per-house origin offset in
+           map frame.  Then hybrid approach:
+           `merge_slam_onto_blueprint.py` stamps
            SLAM-observed furniture onto the pristine blueprint.
 ================================================================
 
@@ -6115,9 +6115,9 @@ Theme: THREE ARCS PLAYED OUT.
      measured from +X (map East) toward +Y (map North).
      Values James found by trial for Stormy (Manual reference
      poses on the current blueprint frame):
-        dock (study):              0.0 0.0 0.0
-        bedroom door:            19.4 -1.05 +pi/2 (facing S)
-        inside bedroom, aimed
+        dock (Room A):              0.0 0.0 0.0
+        a bedroom door:            19.4 -1.05 +pi/2 (facing S)
+        inside a bedroom, aimed
             toward bathroom door: 19.5 -2.51 -1.9  (approx)
         inside bathroom door,
             aimed E-W:            15.6 -7.00 ~3.0
@@ -6136,7 +6136,8 @@ Theme: THREE ARCS PLAYED OUT.
      PGM pinched to 5-7 cm clearance - too tight for AMCL
      even after Nav2 robot_radius was dropped to 0.18 m.
      Solution:  export the CorelDraw house blueprint
-     (walls-only, JPG, CMYK, 2936 x 1834) to a PGM at
+     (walls-only, JPG, CMYK, source pixel dimensions per
+     your export) to a PGM at
      Nav2-standard 0.05 m/pixel using an image-processing
      script.
      Files added:
@@ -6148,13 +6149,13 @@ Theme: THREE ARCS PLAYED OUT.
         assets/maps/Stormy_blueprint.png            preview
      Scale math (Manual - carry these numbers so you can redo
      for any house):
-        Blueprint total width: 81 ft = 24.69 m.
-        Source image width:    2936 px.
-        Source resolution:     24.69 / 2936 = 0.00841 m/px
-                               (~8.4 mm/px).
+        Blueprint total width: <H_ft> ft = <H_m> m.
+        Source image width:    <Px_W> px.
+        Source resolution:     <H_m> / <Px_W> = <res_mpp>
+                               m/px (~8-9 mm/px on Stormy).
         Target Nav2 resolution: 0.05 m/px (matches existing
                                 Stormy_v29 map).
-        Output PGM size:       ~494 x 309 px.
+        Output PGM size:       <derived from downscale>.
         Downscale via cv2.INTER_AREA (anti-aliased, preserves
         thin walls); re-threshold after resize (< 50 % gray ->
         occupied 0; else free 254).
@@ -6162,18 +6163,17 @@ Theme: THREE ARCS PLAYED OUT.
      Origin calibration (Manual - the dock-as-reference method):
         Manually mark the robot's dock location on the blueprint
         with a green cross.  Locate the cross pixel in the
-        source image; here (2500, 955).  Compute the YAML
-        origin from bottom-left corner:
-          x_origin = -2500 * 0.00841           = -21.02 m
-          y_origin = -(1834 - 955) * 0.00841   = -7.39 m
+        source image, then compute the YAML origin from the
+        bottom-left corner:
+          x_origin = -<gx> * <res_mpp>              = <-x_m>
+          y_origin = -(<Px_H> - <gy>) * <res_mpp>   = <-y_m>
         Then hand-tune 0.5 m at a time via relaunch/observe
         cycles until Rviz2 shows Stormy's LIDAR returns
-        overlaying the blueprint walls.  Final for Stormy
-        (2026.04.04):
-          origin: [-3.407, -8.114, 0.0]
+        overlaying the blueprint walls.  Final `origin` for
+        Stormy is a per-house calibration value stored in the
+        map YAML.
      Handling doors (Manual sidebar):
-        All interior doors passable EXCEPT bedroom 2 and
-        bedroom 3 closet doors.  For French doors (study,
+        All interior doors passable EXCEPT two closet doors.  For French doors (Room A,
         master bath): map the full double-door width open;
         at runtime the costmap + LIDAR handle a partially-open
         door correctly.
@@ -6236,7 +6236,7 @@ Theme: THREE ARCS PLAYED OUT.
            unknown - the architect wins.
         6. Save as `Stormy_merged.pgm/yaml/png`.
      Trade-offs (Manual sidebar):
-        Furniture in OPEN areas (kitchen island, hall table)
+        Furniture in OPEN areas (a feature-poor open area, a hallway feature)
           -> works great, few-cm drift immaterial.
         Furniture AGAINST WALLS (bookshelves, desks)
           -> the against-wall side may vanish (pixel already
@@ -6627,7 +6627,7 @@ Theme: THE AUTONOMOUS-EXPLORATION ERA, THE INDICATORS PROJECT,
         showing yaw.  Blue text ~0.2 m height, green arrows
         0.4 m long.
         Anchors defined as list of dicts:
-          {"id": N, "name": "kitchen", "x": ..., "y": ...,
+          {"id": N, "name": "room_a", "x": ..., "y": ...,
            "yaw": <radians>}
         Alias:
           alias anchorln='python3 ~/robot_ws/src/articubot_one/
@@ -7730,8 +7730,8 @@ Theme: THE POST-DISASTER REBUILD + THE WiFi ODYSSEY.
      was still going out `wlan0` (Pi's onboard radio).
      Diagnosis:
         `ip -o -4 route show default`
-        default via 192.168.68.1 dev wlan0            metric 200
-        default via 192.168.68.1 dev wlx90de801012a6  metric 601
+        default via <ROUTER_IP> dev wlan0            metric 200
+        default via <ROUTER_IP> dev <USB_WIFI_IFACE>  metric 601
      Lower metric wins.  wlan0 was 200 (netplan config
      `01-network-config.yaml` hard-set) vs USB's default 601
      (from DHCP).
@@ -7745,34 +7745,34 @@ Theme: THE POST-DISASTER REBUILD + THE WiFi ODYSSEY.
                 /etc/netplan/01-network-config.yaml.bak.$(date +%Y%m%d_%H%M%S)
         sudo sed -i 's/metric: 200/metric: 300/' \
                     /etc/netplan/01-network-config.yaml
-        sudo nmcli con modify H0bb1tH0l3 ipv4.route-metric 100
+        sudo nmcli con modify <HOME_SSID> ipv4.route-metric 100
         sudo netplan apply
      Verify:
-        default via 192.168.68.1 dev wlx90de801012a6  metric 100
-        default via 192.168.68.1 dev wlan0            metric 300
+        default via <ROUTER_IP> dev <USB_WIFI_IFACE>  metric 100
+        default via <ROUTER_IP> dev wlan0            metric 300
   M  ***Manual keystone - DISABLE wlan0 ENTIRELY (2026.07.10):***
      Metric change alone leaked traffic to wlan0 (Foxglove/SSH
      inbound bind, DDS multi-locator advertisement).  Solution
      as of end-of-log: disable wlan0 completely.
-        # (SSH in over USB dongle IP 192.168.68.66 first!)
-        sudo nmcli con modify netplan-wlan0-H0bb1tH0l3 \
+        # (SSH in over USB dongle IP <ROBOT_WIFI_IP> first!)
+        sudo nmcli con modify netplan-wlan0-<HOME_SSID> \
                               connection.autoconnect no
         sudo nmcli dev disconnect wlan0
-        hostname -I     # should show ONLY 192.168.68.66
+        hostname -I     # should show ONLY <ROBOT_WIFI_IP>
      To re-enable (if USB dongle fails):
-        sudo nmcli con modify netplan-wlan0-H0bb1tH0l3 \
+        sudo nmcli con modify netplan-wlan0-<HOME_SSID> \
                               connection.autoconnect yes
-        sudo nmcli con up netplan-wlan0-H0bb1tH0l3
+        sudo nmcli con up netplan-wlan0-<HOME_SSID>
      Manual sidebar: SSH connection profile in PuTTY was
-     updated to `Stingray-wlxUSB -> 192.168.68.66` so future
+     updated to `Stingray-wlxUSB -> <ROBOT_WIFI_IP>` so future
      sessions don't rely on wlan0 being up.
   M  Manual sidebar - Deco mesh reshuffle 2026.07.10:
      Three TP-Link Deco units on ethernet backhaul.  All same
-     model (OUI 34:60:F9).  Radio BSSIDs = sticker MAC + 2
+     model (OUI <DECO_OUI>).  Radio BSSIDs = sticker MAC + 2
      (2.4 GHz) and +3 (5 GHz).  Layout AFTER 2026.07.10 move:
-        Study       34:60:F9:5D:7C:14
-        Sewing      34:60:F9:5D:7B:C4 (upstairs, over living)
-        Breakfast   34:60:F9:5D:7C:B0 (moved from Master Closet
+        Node A     <DECO_A_MAC>
+        Node B     <DECO_B_MAC> (upstairs)
+        Node C     <DECO_C_MAC> (relocated 2026.07.10
                     which was walled off with poor coverage)
      Manual: preserve this table; drive-log analyses will
      reference these BSSIDs.  DHCP reservations pinned in
@@ -7795,7 +7795,7 @@ Theme: THE POST-DISASTER REBUILD + THE WiFi ODYSSEY.
             and wireless clients (typical Deco firmware
             behavior).
         (b) LinuxBox is dual-homed on the SAME /22 subnet
-            (enp3s0f1 ethernet 192.168.68.99 + wlp2s0 WiFi
+            (enp3s0f1 ethernet <LINUXBOX_ETH_IP> + wlp2s0 WiFi
             .98).  CycloneDDS silently binds multicast to
             ONE interface and the other side may never see
             SPDP heartbeats.
@@ -7817,15 +7817,15 @@ Theme: THE POST-DISASTER REBUILD + THE WiFi ODYSSEY.
             <Discovery>
               <ParticipantIndex>auto</ParticipantIndex>
               <Peers>
-                <Peer address="192.168.68.66"/>    <!-- Stingray USB -->
-                <Peer address="192.168.68.99"/>    <!-- LinuxBox eth -->
+                <Peer address="<ROBOT_WIFI_IP>"/>    <!-- Stingray USB -->
+                <Peer address="<LINUXBOX_ETH_IP>"/>    <!-- LinuxBox eth -->
               </Peers>
             </Discovery>
           </Domain>
         </CycloneDDS>
         EOF
         # <IFACE> = enp3s0f1 on LinuxBox
-        #        = wlx90de801012a6 on Stingray
+        #        = <USB_WIFI_IFACE> on Stingray
         echo 'export CYCLONEDDS_URI=file://$HOME/cyclonedds.xml' \
              >> ~/.bashrc
         source ~/.bashrc
@@ -7849,7 +7849,7 @@ Theme: THE POST-DISASTER REBUILD + THE WiFi ODYSSEY.
   N  Final entry (Manual origin chapter - the log's own coda):
      WiFi measurement run with new router placement.  Rainbow
      heat map from Stormy_wifi_data.db shows better coverage
-     than the pre-Breakfast-Deco layout.  Audio system: volume
+     than the pre-third-Deco layout.  Audio system: volume
      150% pin survived reboot at `default-nodes` level but NOT
      at `default-routes` volume level.  systemd user-unit fix
      for volume persistence deferred to next session.
@@ -7934,8 +7934,8 @@ FLAGS FINAL STATUS
       Indicators:       2xIRLZ44N direct-drive PCB, GPIO 17+27,
                         Klingon beacon WAV, danger.wav on Nav2
                         alerts
-      Network:          USB WiFi wlx90de801012a6 only;
-                        192.168.68.66 static via DHCP
+      Network:          USB WiFi <USB_WIFI_IFACE> only;
+                        <ROBOT_WIFI_IP> static via DHCP
                         reservation on Deco
       DDS:              cyclonedds, unicast peers via
                         ~/cyclonedds.xml + CYCLONEDDS_URI
@@ -8122,10 +8122,10 @@ Theme: The RoboClaw / Pi 5 UART wilderness begins.  Netplan and static IP
                    eth0:
                        dhcp4: false
                        addresses:
-                           - 192.168.68.92/22
+                           - <ROBOT_STATIC_A>/22
                        routes:
                            - to: default
-                             via: 192.168.68.1
+                             via: <ROUTER_IP>
                              metric: 100
                        nameservers:
                            addresses: [8.8.8.8, 8.8.4.4]
@@ -8133,10 +8133,10 @@ Theme: The RoboClaw / Pi 5 UART wilderness begins.  Netplan and static IP
                    wlan0:
                        dhcp4: false
                        addresses:
-                           - 192.168.68.93/22
+                           - <ROBOT_STATIC_B>/22
                        routes:
                            - to: default
-                             via: 192.168.68.1
+                             via: <ROUTER_IP>
                              metric: 200
                        nameservers:
                            addresses: [8.8.8.8, 8.8.4.4]
@@ -8735,10 +8735,10 @@ N  THE BLESSING OF THE ROBOT  (Manual origin chapter,
      senses.  You are not an intelligent human under a box;
      you are just a dumb box with a couple motors.  What
      senses and sensibilities would need to be installed for
-     you to find the kitchen?  Bumper.  Distance stick.
+     you to find another room?  Bumper.  Distance stick.
      Compass.  Light meter (or two, for phototropism).  Scratch
      paper + calculator.  Are you any smarter yet?  Not very.
-     Have you found the kitchen?  You don't even know where
+     Have you found another room?  You don't even know where
      the door is.
      >>> Payoff line, quotable in the Manual: "You have just
      experienced the problem of SLAM.  Simultaneous Location

@@ -1,6 +1,6 @@
 ================================================================
 STORMY THE STINGRAY - BUILDER'S MANUAL
-Version 1.0 - Compiled 2026-07-20
+Version 1.1 - Compiled 2026-07-20; public release 2026-09-11
 ================================================================
 
 Owner:       James H Phelan, MD
@@ -27,7 +27,7 @@ Purpose:     If the SD card dies tomorrow, this document is
              subsystem-oriented.  Every procedure is one that
              has been executed successfully on the real robot.
 
-Companion:   Stingray_Field_Notes.txt (104 lessons + indexes)
+Companion:   Stingray_Field_Notes.txt (105 lessons + indexes)
              Stingray_Curation_Notes.txt (17 chunks raw
              stardated distillate from the source log)
              Stingray Experience.wpd (source log,
@@ -37,6 +37,39 @@ Style:       Plain text.  No markdown.  "====" dividers between
              chapters, "----" between sections.  Command blocks
              indented.  File paths use $HOME or explicit
              /home/ubuntu/ where the tilde matters.
+
+Placeholder key (values in <ANGLE_BRACKETS> are placeholders;
+substitute your own before running any command that includes
+one):
+
+    <ROBOT_ETH_IP>          Stingray wired ethernet address
+    <ROBOT_WIFI_IP>         Stingray USB WiFi dongle address
+    <ROBOT_WLAN_IP>         Stingray onboard WiFi (disabled;
+                            noted for older recipes only)
+    <LINUXBOX_ETH_IP>       LinuxBox ethernet address
+    <LINUXBOX_WIFI_IP>      LinuxBox WiFi address
+    <WORKSTATION_IP>        Windows workstation address
+    <ROUTER_IP>             LAN gateway
+    <ROBOT_STATIC_A>        Stingray netplan static address (A)
+    <ROBOT_STATIC_B>        Stingray netplan static address (B)
+    <DHCP_POOL_RANGE>       Your router's DHCP client range
+    <HOME_SSID>             Your home WiFi SSID
+    <USB_WIFI_IFACE>        Interface name of the USB WiFi
+                            dongle on your Pi (Ubuntu names it
+                            wlx<mac>; will differ per adapter)
+    <DECO_OUI>              OUI of your TP-Link Deco mesh nodes
+                            (first three MAC octets)
+    <DECO_A_MAC>            Base MAC of Deco node A
+    <DECO_A_2G_TAIL>        Last two octets of Deco A's 2.4 GHz
+                            BSSID (= base + 2)
+    <DECO_A_5G_TAIL>        Last two octets of Deco A's 5 GHz
+                            BSSID (= base + 3)
+    ...B, C follow the same pattern for additional Deco nodes.
+
+All IPs, MAC addresses, SSIDs, and MAC-derived interface names
+in this Manual are placeholders.  This is a builder's manual;
+the specific values on the author's home LAN are neither
+interesting to a reader nor safe to publish.
 
 ================================================================
 TABLE OF CONTENTS
@@ -91,7 +124,7 @@ rebuild) and work its recipe top-to-bottom.
 Every claim in this Manual has a citation to either the
 Stingray Experience source log (by stardate) or a companion
 Field Note (by item number).  Uncited facts are current
-best-known state as of 2026-07-20.
+best-known state as of 2026-09-11.
 
 
 ================================================================
@@ -447,19 +480,19 @@ Subsequent chapters go deep on each subsystem.
 2.8  Network (see Chapters 9 and 18)
 ----------------------------------------------------------------
 
-    Ethernet         eth0, 192.168.68.97, DHCP-reserved
+    Ethernet         eth0, <ROBOT_ETH_IP>, DHCP-reserved
     Internal WiFi    wlan0, DISABLED (connection.autoconnect
                      no, dev disconnect) as of 2026.07.10
                      because of Pi 5's 2.4 GHz interference
                      issues
-    USB WiFi         wlx90de801012a6 (Realtek RTL8812BU
-                     Amazon B078NSSM7W), 192.168.68.66,
+    USB WiFi         <USB_WIFI_IFACE> (Realtek RTL8812BU
+                     Amazon B078NSSM7W), <ROBOT_WIFI_IP>,
                      DHCP-reserved.
     LAN              TP-Link Deco mesh, 3 units on
                      ethernet backhaul
-                     - Study      34:60:F9:5D:7C:14
-                     - Sewing     34:60:F9:5D:7B:C4
-                     - Breakfast  34:60:F9:5D:7C:B0
+                     - Node A     <DECO_A_MAC>
+                     - Node B     <DECO_B_MAC>
+                     - Node C     <DECO_C_MAC>
     ROS domain       Default (0)
     RMW              cyclonedds (`rmw_cyclonedds_cpp`)
     Discovery        UNICAST peer list via
@@ -1009,6 +1042,82 @@ Chain (all TwistStamped):
     -> /diff_cont/cmd_vel
     -> roboclaw_driver_node subscribes as TwistStamped
 
+----------------------------------------------------------------
+4.8  Per-board main-battery voltage calibration
+----------------------------------------------------------------
+
+RoboClaw firmware exposes no user calibration for its
+main-battery voltage readback.  Individual boards can show
+a fixed additive or multiplicative error against a bench
+voltmeter.  Stormy's 2x7A v4.2.8 reads about 1.5 V high;
+without correction, low-battery cut-off logic and the
+battery-status topic report bogus numbers.
+
+Fix:  the driver applies a two-parameter linear correction
+before publishing:
+
+    reported = raw/10.0 * main_battery_scale + main_battery_offset
+
+Defaults preserve original behavior (scale = 1.0, offset =
+0.0).  Set the two YAML parameters in
+`robots/stingray/config/roboclaw.yaml`:
+
+    roboclaw_driver:
+      ros__parameters:
+        # Per-board voltage calibration.  Applied before
+        # publishing to /battery_state.  Defaults preserve
+        # the original driver readback.
+        main_battery_scale: 1.0
+        main_battery_offset: 0.0
+
+Bench calibration procedure (Stormy 2026.09.04):
+  1. Wheels OFF the ground, RoboClaw powered by an
+     adjustable bench PSU with the LiPo unplugged.
+  2. Sweep at least 8 points across the operating range
+     (e.g. 12.0, 13.0, 13.5, 14.0, 14.5, 15.0, 15.5, 16.0
+     V for a 4S LiPo bus).  At each point, log the true
+     bus voltage (voltmeter across the RoboClaw's main
+     terminals) and the driver's reported value.
+  3. Fit a linear model:
+         reported = m * true + b
+     with least-squares regression.
+  4. Invert to get calibration:
+         main_battery_scale  = 1 / m
+         main_battery_offset = -b / m
+  5. In practice the error on healthy RoboClaws is often
+     a pure additive offset (slope m = 1.0 within readback
+     quantum).  Try offset-only first:  fit for
+     `main_battery_offset` with `main_battery_scale = 1.0`.
+
+Stormy 2x7A v4.2.8 calibration (bench-verified 2026.09.04):
+    main_battery_scale:   1.0
+    main_battery_offset: -1.525
+Slope was unit within readback quantum; residual RMS at
+the raw-readback quantization floor across all 8 points.
+Post-calibration voltage matched the bench voltmeter to
++/- one readback quantum across the full operating range.
+
+Feature branch status (2026-09-11):  the two parameters
+live on JHPHELAN/roboclaw_driver's
+`feat/main-battery-calibration` branch, commit `5d9714c`.
+They are NOT yet merged to `main`.  To use them today,
+either check out the branch:
+    cd ~/robot_ws/src/roboclaw_driver
+    git fetch origin
+    git checkout feat/main-battery-calibration
+    cd ~/robot_ws && colcon build --packages-select roboclaw_driver
+or wait for the branch to land on main.  Delete this
+paragraph and update `main` when merged.
+
+Relation to Field Note item 97:  item 97 is about the
+LOGIC-battery voltage window and SETLOGICVOLTAGES
+(Command 58) - unrelated to the main-battery readback
+calibration described here.  Both live on the same
+RoboClaw, both in the same yaml, both are Stormy-
+specific driver-startup adjustments, but they solve
+different problems.  See item 97 for the logic-battery
+side; this section is main-battery only.
+
 
 ================================================================
 CHAPTER 5 - COMPUTE (Raspberry Pi 5)
@@ -1188,6 +1297,36 @@ Install:
     rosdep install --from-paths src --ignore-src -r -y
     colcon build --packages-select bno08x_driver
 
+Launch pattern - 2 s startup delay (2026.08.30):
+    Wrap the bno085 Node in a `TimerAction(period=2.0, ...)`
+    so I2C is opened AFTER the SH-2 sensor hub has finished
+    booting.  Without the delay, `enable_report()` calls in
+    the driver can race the hub's boot-complete signal and
+    leave only ACCELEROMETER streaming - the tell is
+    `imu_received_flag_` stuck at 0x02 (accel only, no gyro,
+    no rotation vector).  In
+    `robots/stingray/launch/stingray.sensors.launch.py`:
+
+        from launch.actions import TimerAction
+        ...
+        bno085_driver_node = Node(
+            package='bno08x_driver',
+            executable='bno08x_driver',
+            name='bno08x_driver',
+            parameters=[bno085_config],
+            remappings=[("imu", "imu/data")],
+            respawn=True, respawn_delay=4,
+            output='screen',
+        )
+        bno085_delayed = TimerAction(period=2.0,
+                                     actions=[bno085_driver_node])
+        return LaunchDescription([..., bno085_delayed, ...])
+
+    Belt-and-braces.  The primary root-cause fix for the
+    stalled-at-0x02 symptom is `enable_6dof_mode: true` in
+    the yaml (see 6.3); the 2 s delay defends against the
+    race that can still happen on a fast Pi 5 boot.
+
 ----------------------------------------------------------------
 6.3  Configuration
 ----------------------------------------------------------------
@@ -1195,16 +1334,23 @@ Install:
 Config file:
     robots/stingray/config/bno085_i2c.yaml
 
-Full contents (canonical):
+Full contents (canonical as of 2026-08-31):
 
     bno08x_driver:
       ros__parameters:
         frame_id: "imu_link"
 
-        # Use game-rotation-vector mode (no magnetometer
-        # for absolute yaw).  Indoor use only.  See
-        # Field Note item 42 for the top-level-vs-nested
-        # YAML gotcha.
+        # Chassis, motors, and USB WiFi antenna prevent SH-2
+        # magnetometer calibration -> 9-DOF (default) stalls
+        # waiting for mag.  Force 6-DOF (accel + gyro) using
+        # SH2_GAME_ROTATION_VECTOR instead of the default
+        # SH2_ROTATION_VECTOR.
+        enable_6dof_mode: true
+
+        # Game-rotation-vector mode: relative orientation, no
+        # absolute mag-north yaw.  Indoor use.  See Field Note
+        # item 42 for the top-level-vs-nested YAML gotcha - this
+        # key MUST be at top level, not under `publish.imu`.
         imu:
           use_magnetometer: false
           orientation_yaw_variance: 0.005
@@ -1224,17 +1370,30 @@ Full contents (canonical):
                                  # publisher still ran I2C
                                  # traffic.  Halve bus load
                                  # by disabling.
+            rate: 10
           imu:
             enabled: true
             rate: 50             # was 100; EKF runs 30 Hz
                                  # so 50 is plenty
 
-Rationale for `use_magnetometer: false`:  indoor magnetic
-distortion (motor magnets, current-carrying bus wiring,
-steel in nearby structures) makes absolute mag-north yaw
-unstable.  Game-rotation-vector uses gyro + accel only.
-Absolute yaw drifts slowly but is stable in the short term,
-which is what SLAM correction handles.
+Why 6-DOF mode is mandatory on Stormy:  the SH-2 magnetic
+calibration routine baked into the BNO085's on-chip sensor
+fusion never completes in Stormy's magnetic environment
+(motor magnets, LiPo bus currents, USB WiFi antenna).  In
+default 9-DOF SH2_ROTATION_VECTOR mode, the sensor waits
+indefinitely for a good calibration and never publishes a
+usable orientation quaternion - `/imu/data` shows
+`imu_received_flag_ = 0x02` (accelerometer only) and EKF
+fusion collapses to wheel-odom-only.  `enable_6dof_mode:
+true` bypasses that path entirely and uses
+SH2_GAME_ROTATION_VECTOR, which is gyro + accel only.
+Relative yaw drifts slowly but stays stable in the short
+term, which is what SLAM loop closure handles.
+
+Default of the driver is 9-DOF (mag-enabled) because that
+is the sensor's advertised behavior for outdoor use.  Any
+robot whose SH-2 mag calibration DOES complete can leave
+this at default.  Stormy cannot; do not remove the pin.
 
 ----------------------------------------------------------------
 6.4  EKF integration
@@ -1566,33 +1725,69 @@ factory calibration.
 Topic:     `/oak/points` (sensor_msgs/PointCloud2)
 Purpose:   Detect obstacles BELOW the LiDAR plane
            (0.15 m).  LiDAR misses coffee-table crossbars,
-           shoe piles, and the dog.
+           shoe piles, and pets.
 
-In nav2_params.yaml, both local_costmap and global_costmap:
+The LOCAL and GLOBAL costmaps use DIFFERENT height bands
+(learned 2026.07.06 - see Field Note item 61 for the
+full rationale).  The parameter names on the point-cloud
+source are `min_obstacle_height` / `max_obstacle_height`
+(NOT `min_height` / `max_height` - older forks used the
+short names).  Source key on both costmaps is
+`oak_points` on the current live yaml.
 
+LOCAL costmap (rolling, self-clearing):
     obstacle_layer:
       plugin: "nav2_costmap_2d::ObstacleLayer"
-      enabled: true
-      observation_sources: laser oakd
+      enabled: True
+      observation_sources: laser oak_points
       laser:
         data_type: "LaserScan"
         topic: /scan
         max_obstacle_height: 2.0
-        clearing: true
-        marking: true
-      oakd:
+        clearing: True
+        marking: True
+      oak_points:
         data_type: "PointCloud2"
         topic: /oak/points
-        min_height: 0.02       # skip floor/rugs
-        max_height: 0.31       # top of USB WiFi antenna
-                               # (was 0.22, just below
-                               # LiDAR - raised so tall
-                               # obstacles that clear the
-                               # LiDAR plane still mark)
-        expected_update_rate: 10.0
-        marking: true
-        clearing: false        # don't clear on OAK-D
-                                # dropouts
+        min_obstacle_height: 0.02   # reactive - allow low
+        max_obstacle_height: 0.22   # just below LiDAR
+        marking: True
+        clearing: True
+        raytrace_max_range: 3.0
+        raytrace_min_range: 0.20
+        obstacle_max_range: 2.0
+        obstacle_min_range: 0.20
+
+GLOBAL costmap (non-rolling, persistent):
+    Same as local EXCEPT:
+      oak_points:
+        min_obstacle_height: 0.10   # raise the floor
+        expected_update_rate: 0.0   # silences stale warn
+
+Rationale for the 0.10 floor on global (short version):
+    A 0.02 m floor on the global map catches OAK-D stereo
+    noise on carpet / tile grout / cable dust.  Because
+    the global costmap is not rolling and OAK-D clearing
+    only happens in its ~72 deg forward wedge, those
+    phantom marks accumulate, each inflated to a ~1 m
+    cost mountain by the 0.50 m inflation halo.
+    Result: paralysis at doorways whose `/map` shows
+    clear but `/global_costmap` shows blocked.  Raising
+    to 0.10 m puts the floor above almost all
+    ground-noise artifacts while still catching a shoe,
+    book, or pet dish (real hazards for a ~22 cm robot).
+
+WiFi-antenna caveat (open item, 2026-09-11):  The USB
+WiFi antenna sits at 0.31 m, higher than the current
+0.22 m ceiling.  When the antenna is upright, obstacles
+that clear the LiDAR plane (0.15 m) but hit the antenna
+are neither seen nor avoided.  Options under discussion:
+raise `max_obstacle_height` to 0.35, servo-control the
+antenna, or tune Nav2 recoveries to prefer rotation
+over reverse.  See handoff queue for status.
+
+Live-config sync:  2026-09-11 (nav2_params.yaml on
+articubot_one exploration branch @ 96c28e5).
 
 ----------------------------------------------------------------
 8.5  Mesh and material
@@ -1622,16 +1817,16 @@ CHAPTER 9 - NETWORKING
 9.1  Interfaces (current, 2026-07-20)
 ----------------------------------------------------------------
 
-    eth0                    Wired Ethernet, 192.168.68.97
+    eth0                    Wired Ethernet, <ROBOT_ETH_IP>
                             DHCP-reserved.  Primary when
                             docked.
     wlan0                   Pi 5 internal WiFi.  DISABLED
                             since 2026.07.10 (Field Note
                             item 77 - Pi 5 2.4 GHz is broken
                             by design).
-    wlx90de801012a6         Realtek RTL8812BU USB WiFi
+    <USB_WIFI_IFACE>         Realtek RTL8812BU USB WiFi
                             dongle on the powered USB hub.
-                            192.168.68.66, DHCP-reserved.
+                            <ROBOT_WIFI_IP>, DHCP-reserved.
                             Primary when driving.
 
 DHCP reservations are set in the TP-Link Deco app for both
@@ -1647,36 +1842,36 @@ Rationale: even with route metric configured, inbound TCP
 dialed, and DDS multi-locator advertisement causes traffic
 to leak to wlan0.  Cleanest solution is to keep wlan0 down.
 
-    # SSH in over USB dongle IP 192.168.68.66 first!
-    sudo nmcli con modify netplan-wlan0-H0bb1tH0l3 \
+    # SSH in over USB dongle IP <ROBOT_WIFI_IP> first!
+    sudo nmcli con modify netplan-wlan0-<HOME_SSID> \
                           connection.autoconnect no
     sudo nmcli dev disconnect wlan0
 
     # Verify:
     hostname -I
-    # Should show ONLY 192.168.68.66 (and possibly eth0's
-    # 192.168.68.97 when docked)
+    # Should show ONLY <ROBOT_WIFI_IP> (and possibly eth0's
+    # <ROBOT_ETH_IP> when docked)
 
 To re-enable if USB dongle fails:
-    sudo nmcli con modify netplan-wlan0-H0bb1tH0l3 \
+    sudo nmcli con modify netplan-wlan0-<HOME_SSID> \
                           connection.autoconnect yes
-    sudo nmcli con up netplan-wlan0-H0bb1tH0l3
+    sudo nmcli con up netplan-wlan0-<HOME_SSID>
 
 ----------------------------------------------------------------
 9.3  TP-Link Deco mesh layout
 ----------------------------------------------------------------
 
 Three Deco units on ethernet backhaul.  All same model
-(OUI 34:60:F9).  Radio BSSIDs = sticker MAC + 2 (2.4 GHz)
+(OUI <DECO_OUI>).  Radio BSSIDs = sticker MAC + 2 (2.4 GHz)
 and + 3 (5 GHz):
 
     Location    Base MAC              2.4 GHz    5 GHz
-    Study       34:60:F9:5D:7C:14     :7C:16     :7C:17
-    Sewing      34:60:F9:5D:7B:C4     :7B:C6     :7B:C7
-    Breakfast   34:60:F9:5D:7C:B0     :7C:B2     :7C:B3
+    Node A      <DECO_A_MAC>     :<DECO_A_2G_TAIL>     :<DECO_A_5G_TAIL>
+    Node B      <DECO_B_MAC>     :<DECO_B_2G_TAIL>     :<DECO_B_5G_TAIL>
+    Node C      <DECO_C_MAC>     :<DECO_C_2G_TAIL>     :<DECO_C_5G_TAIL>
 
-Breakfast unit moved from Master Closet on 2026.07.10 for
-better far-end coverage.
+Node C was relocated on 2026.07.10 for better far-end
+coverage.
 
 Backhaul is ethernet on all three, so airtime is fully
 available for clients - link-quality differences are not
@@ -1877,8 +2072,8 @@ Add public key to GitHub account (Settings -> SSH keys):
     # copy the output, paste into GitHub
 
 Configure git:
-    git config --global user.name "James H Phelan"
-    git config --global user.email "jhphelan@hal-pc.org"
+    git config --global user.name "<YOUR_NAME>"
+    git config --global user.email "<YOUR_EMAIL>"
 
 Test:
     ssh -T git@github.com
@@ -2316,8 +2511,7 @@ toward +Y (map North).  See Field Note item 44.
 
 Config: `robots/stingray/config/amcl_params.yaml`
 
-Tuning that handles Stormy's kitchen-island feature-poor
-area (Field Note item 64):
+Tuning that handles Stormy's feature-poor open-area (Field Note item 64):
 
     max_particles:            5000
     laser_max_beams:           120
@@ -2402,40 +2596,51 @@ Two scripts do the work:
 14.2  blueprint_to_pgm.py - one-time setup
 ----------------------------------------------------------------
 
-Inputs:
-    StormyHouseMapWallsOnly.jpg     CorelDraw export of
-                                    walls-only layer;
-                                    2936 x 1834 CMYK
-    StormyHouseMapXMarksDock.jpg    Same base image with
-                                    a green cross at the
-                                    robot dock location
+Inputs (specific pixel dimensions depend on your export;
+the values shown are placeholders):
+    <BLUEPRINT>_WallsOnly.jpg        CorelDraw export of
+                                     walls-only layer;
+                                     <Px_W> x <Px_H> CMYK
+    <BLUEPRINT>_XMarksDock.jpg       Same base image with
+                                     a green cross at the
+                                     robot dock location
 
-CorelDraw scale factor:
-    0.73 in in drawing = 72 in in life
-    drawing_dist = life_dist * (0.73 / 72)
+CorelDraw scale factor (adjust to your drawing):
+    <drawing_in> in in drawing = <life_in> in in life
+    drawing_dist = life_dist * (<drawing_in> / <life_in>)
 
-Blueprint image is 2936 px wide for the 81 ft house width:
-    24.69 m / 2936 px = 0.00841 m / px (source resolution)
+Blueprint image resolution (from your export):
+    Source width       = <Px_W> px
+    Real-world width   = <H_ft> ft  =  <H_m> m
+    Source resolution  = <H_m> / <Px_W>  m/px
 
 Target Nav2 resolution: 0.05 m/px (matches all other maps
-on Stormy).  Output PGM is downscaled to ~494 x 309 px via
-`cv2.INTER_AREA` (preserves thin walls).
+on Stormy).  Output PGM is downscaled from the source PX
+grid to the Nav2 PX grid via `cv2.INTER_AREA` (preserves
+thin walls).
 
 Dock origin calibration:
-    Green cross at pixel (2500, 955) in source image.
-    x_origin = -2500 * 0.00841           = -21.02 m
-    y_origin = -(1834 - 955) * 0.00841   =  -7.39 m
+    Green cross at pixel (<gx>, <gy>) in source image.
+    x_origin = -<gx> * <res_mpp>                = <-x_m>
+    y_origin = -(<Px_H> - <gy>) * <res_mpp>     = <-y_m>
     (bottom-left corner of the output PGM in map frame)
 
 Then hand-tune 0.5 m at a time via relaunch-and-observe
 cycles until Stormy's LIDAR returns overlay the blueprint
-walls.  Stormy's final:
-    origin: [-3.407, -8.114, 0.0]
+walls.  The final `origin` for the map's YAML is a
+per-house calibration value.
+
+Placeholder legend (substitute your own):
+    <Px_W>, <Px_H>    Source blueprint pixel dimensions
+    <H_ft>, <H_m>     House width feet, meters
+    <res_mpp>         <H_m> / <Px_W>  in m/px
+    <gx>, <gy>        Pixel location of green cross (dock)
+    <-x_m>, <-y_m>    Computed map-origin offsets
 
 Door handling:
-    All interior doors passable EXCEPT bedroom 2 and
-    bedroom 3 closet doors (closed by painting wall pixels
-    across the doorway post-flood-fill).
+    All interior doors passable EXCEPT two closet doors,
+    which are closed by painting wall pixels across the
+    doorway post-flood-fill.
 
 Run:
     cd ~/robot_ws/src/articubot_one/assets/maps
@@ -2538,6 +2743,17 @@ Node subscribes to /map, computes frontier clusters
 scores them by cluster size + distance + clearance, sends
 top-scored frontier as a Nav2 goal, waits for success/abort,
 repeats.  Stops when no reachable frontier remains.
+
+Deep-dive:  a long-form explanation of the scoring, filters,
+recovery, and known limitations of `frontier_explorer_v2.py`
+lives in the README of the `exploration` branch of
+JHPHELAN/articubot_one:
+    https://github.com/JHPHELAN/articubot_one/tree/exploration
+The write-up was originally requested by Sergei Grichine on
+behalf of Michael Wimble at an HBRC Zoom meeting; ChatGPT
+authored it from the source file, and it was lightly
+reformatted for GitHub Markdown.  Read it before tuning
+parameters below.
 
 ----------------------------------------------------------------
 15.2  Key parameters
@@ -2846,8 +3062,8 @@ CHAPTER 17 - THREE-MACHINE OPERATION
 
 Stingray (Pi 5 on the robot):
     Hostname:      Stingray
-    IPs:           192.168.68.97 (eth0)
-                   192.168.68.66 (wlxUSB)
+    IPs:           <ROBOT_ETH_IP> (eth0)
+                   <ROBOT_WIFI_IP> (wlxUSB)
     Runs:          stingray.launch.py (full robot bringup)
                    indicators.launch.py
                    keepout.launch.py (if using KeepoutFilter)
@@ -2856,8 +3072,8 @@ Stingray (Pi 5 on the robot):
 
 LinuxBox (development laptop, wired or WiFi):
     Hostname:      LinuxBox
-    IPs:           192.168.68.99 (enp3s0f1 ethernet)
-                   192.168.68.98 (wlp2s0 WiFi; usually
+    IPs:           <LINUXBOX_ETH_IP> (enp3s0f1 ethernet)
+                   <LINUXBOX_WIFI_IP> (wlp2s0 WiFi; usually
                                    secondary or disabled)
     Runs:          rviz2 (visualization)
                    plotjuggler (diagnostics)
@@ -2865,7 +3081,7 @@ LinuxBox (development laptop, wired or WiFi):
                                         here instead of Pi)
 
 Hank Rearden (Windows 11 laptop):
-    IPs:           192.168.68.70 (typical)
+    IPs:           <WORKSTATION_IP> (typical)
     Runs:          Foxglove Studio (browser or standalone)
                    PuTTY / VS Code Remote SSH
                    FileZilla (file transfer)
@@ -2906,7 +3122,7 @@ Terminal 6 (LinuxBox):
 
 Terminal 7 (Hank Rearden, browser):
     https://app.foxglove.dev  connect to
-    ws://192.168.68.66:8765
+    ws://<ROBOT_WIFI_IP>:8765
 
 The four Stingray-side terminals (LAUNCH, INDICATORS, FOX,
 EXPLORE) are launched by the `StormyUp` VS Code compound
@@ -2971,15 +3187,15 @@ name` line, which differs per host):
         <Discovery>
           <ParticipantIndex>auto</ParticipantIndex>
           <Peers>
-            <Peer address="192.168.68.66"/>   <!-- Stingray -->
-            <Peer address="192.168.68.99"/>   <!-- LinuxBox -->
+            <Peer address="<ROBOT_WIFI_IP>"/>   <!-- Stingray -->
+            <Peer address="<LINUXBOX_ETH_IP>"/>   <!-- LinuxBox -->
           </Peers>
         </Discovery>
       </Domain>
     </CycloneDDS>
 
 Per-host `<IFACE>` value:
-    Stingray:     wlx90de801012a6
+    Stingray:     <USB_WIFI_IFACE>
     LinuxBox:     enp3s0f1
 
 ----------------------------------------------------------------
@@ -3050,7 +3266,7 @@ canonical set on Stingray:
     # Anchors (per-waypoint nav goals)
     alias dock='ros2 action send_goal /navigate_to_pose ...'
     alias anchor0='...'    # dock (0, 0, 0)
-    alias anchor1='...'    # study door (1.32, 1.32, pi/4)
+    alias anchor1='...'    # first anchor (1.32, 1.32, pi/4)
     # ... (through anchor11; see anchor_display.py source
     #      for the full list)
 
@@ -3783,9 +3999,9 @@ ros2 topic hz /oak/imu/data
 
 # WiFi
 iwconfig wlan0
-iwconfig wlx90de801012a6
+iwconfig <USB_WIFI_IFACE>
 iw dev wlan0 link
-iw dev wlx90de801012a6 link
+iw dev <USB_WIFI_IFACE> link
 ip -o -4 route show default
 hostname -I
 
@@ -4057,8 +4273,8 @@ Baseline (Nav2 defaults):
     laser_likelihood_max_dist:   2.0
     alpha1..alpha5:              0.2
 
-Stormy tuning (holds localization in kitchen-island
-feature-poor area, Field Note item 64):
+Stormy tuning (holds localization in feature-poor open
+areas, Field Note item 64):
     max_particles:              5000
     min_particles:              1000
     laser_max_beams:             120
@@ -4440,14 +4656,14 @@ END OF STORMY THE STINGRAY - BUILDER'S MANUAL
 ================================================================
 
 Compiled 2026-07-20 from Stingray_Curation_Notes.txt (8014
-lines, 17 chunks) and Stingray_Field_Notes.txt (104 items),
+lines, 17 chunks) and Stingray_Field_Notes.txt (105 items),
 which were in turn distilled from the Stingray Experience
 source log (44,832 lines, 235 stardated entries, 2023.05.06
 through 2026.07.11).
 
 Companion deliverables at time of compilation:
     Stingray_Curation_Notes.txt      raw stardated notes
-    Stingray_Field_Notes.txt         104 lessons + indexes
+    Stingray_Field_Notes.txt         105 lessons + indexes
     Stingray_Builders_Manual.txt     this file
     hank-rearden-dotfiles/           Windows-side config
                                      backup kit (README +
@@ -4459,7 +4675,7 @@ Companion deliverables at time of compilation:
                                      (not yet realized as a
                                      repo; live on Stormy)
 
-Version 1.0.  Living document.  Amend as Stormy evolves.
+Version 1.1.  Living document.  Amend as Stormy evolves.
 
 "Not a destination, it's a journey."
                               - James H Phelan, MD

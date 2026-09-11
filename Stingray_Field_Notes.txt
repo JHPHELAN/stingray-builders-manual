@@ -529,15 +529,23 @@ PART III - MECHANICAL
 --------------------------------------------------------------
 32. ***PLACE THE IMU AS FAR AS POSSIBLE FROM MOTORS AND
     WIRES***  (Sergei Grichine 2026.01.13, verbatim;
-    scope-qualified 2026.07.26)
+    scope-qualified 2026.07.26; mount-location corrected
+    2026.09.11)
     "Placing IMU in between the wheels/motors on a real robot
      is a bad idea.  I place IMUs as far as possible from other
      components, wires - everything.  I also check mag field
      with a real compass - the arrow should point North when
      the robot turns."
-    On Stormy the BNO085 lives on the OAK-D front-panel deck,
-    NOT between the drive motors where the BNO055 originally
-    was.
+    On Stormy the Adafruit BNO085 breakout lives at
+    base_link - squarely between the two drive motors, on
+    the lower deck, same location as the BNO055 it
+    replaced.  This IS Stormy's authoritative IMU.  Do NOT
+    confuse it with the BNO086 that lives INSIDE the OAK-D
+    camera housing:  that second IMU was tried, never worked
+    on Stormy, and is abandoned (Field Note item 68).  Any
+    references elsewhere to "the BNO085 on the OAK-D
+    front-panel deck" are the abandoned OAK-D IMU, not the
+    real one.
 
     Scope note (James 2026.07.26):  "This is only relevant
     if the magnetometer/compass on the IMU is being used,
@@ -549,6 +557,15 @@ PART III - MECHANICAL
     good practice (accels/gyros benefit from reduced motor
     vibration coupling) but do NOT treat this as a mag-
     interference workaround when the mag is disabled.
+
+    Canonical mag-disable configuration (2026.08.31):  the
+    two-yaml-key pattern to disable the magnetometer on
+    slgrobotics/bno08x_ros2_driver is documented in Manual
+    Chapter 6.3 - `enable_6dof_mode: true` at the top level
+    (bypasses SH-2 mag calibration) AND
+    `imu.use_magnetometer: false` (game rotation vector
+    mode).  See also items 42 (YAML nesting gotcha), 95
+    (which slgrobotics fork), 103 (the sanity-check wiki).
 
 --------------------------------------------------------------
 33. ***USB-B PORTS FAIL SILENTLY - KEEP A SPARE HUB***
@@ -704,9 +721,9 @@ PART IV - SOFTWARE & CONFIG TRAPS
     Theta is COUNTERCLOCKWISE about +Z, measured from +X (map
     East) toward +Y (map North).  Not clockwise-from-North like
     a compass.  Example poses that work:
-      dock in study:                 0.0   0.0    0.0
-      bedroom door facing south:    19.4  -1.05  -pi/2
-      hallway facing west:           X     Y     +pi
+      dock:                          0.0   0.0    0.0
+      arbitrary pose facing south:  19.4  -1.05  -pi/2
+      pose facing west:              X     Y     +pi
 
 --------------------------------------------------------------
 45. ***YAML `int` vs `double` IS A HARD-ERROR TYPE MISMATCH***
@@ -911,40 +928,63 @@ PART VI - NAV2, SLAM, AMCL
 
 --------------------------------------------------------------
 61. ***OAK-D POINT CLOUD AS NAV2 OBSTACLE SOURCE - HEIGHT
-    BAND***  (2026.05.02; persistence guidance added
-    2026.07.26)
-    LiDAR at 15 cm misses low obstacles (coffee-table crossbars,
-    shoes, dog).  Feed `/oak/points` to Nav2 with height filter:
-        oakd:
-          data_type: PointCloud2
-          topic: /oak/points
-          min_height: 0.02
-          max_height: 0.22
-          expected_update_rate: 10.0
-          marking: true
-          clearing: false
-    2 cm bottom lets rugs and floor level pass; 22 cm top
-    stops just below the LiDAR plane.  Below-LiDAR obstacles
-    now appear in the local costmap.
+    BAND AND LOCAL/GLOBAL SPLIT***  (2026.05.02;
+    persistence guidance withdrawn 2026.09.11)
+    LiDAR at 15 cm misses low obstacles (coffee-table
+    crossbars, shoes, pets).  Feed `/oak/points` to Nav2 as
+    a PointCloud2 obstacle source, and give the LOCAL and
+    GLOBAL costmaps DIFFERENT height bands.
 
-    Bogus persistent obstacles - what to try first:
-      If the OAK-D marks obstacles that never clear even
-      after the robot has driven past, do NOT immediately
-      flip `clearing: true`.  On a depth camera,
-      `clearing: true` raycasts through each depth pixel
-      to erase what it does not currently see - but
-      occasional missing depth pixels (glare, dark
-      surfaces, motion blur) become false "clear" rays that
-      wipe out REAL obstacles behind them.
-      Try TIME-BASED expiration first: add
-          observation_persistence: 1.5
-      to the oakd block.  Any point not re-observed within
-      1.5 s ages out of the costmap; bogus one-frame noise
-      drops off but real obstacles get refreshed each
-      cycle and stay marked.  Only if that is not enough
-      should you flip `clearing: true` and accept the
-      false-negative flicker as the price of raycast-based
-      clearing.
+    LOCAL costmap (fast, rolling, self-clearing):
+        oak_points:
+          data_type: "PointCloud2"
+          topic: /oak/points
+          min_obstacle_height: 0.02
+          max_obstacle_height: 0.22
+          marking: True
+          clearing: True
+
+    GLOBAL costmap (persistent, non-rolling):
+        oak_points:
+          data_type: "PointCloud2"
+          topic: /oak/points
+          min_obstacle_height: 0.10
+          max_obstacle_height: 0.22
+          marking: True
+          clearing: True
+
+    Why the split (learned 2026.07.06):
+      A 0.02 m floor on the GLOBAL costmap catches OAK-D
+      stereo noise on carpet, tile grout, and cable dust
+      and marks it into the map.  Because the global
+      costmap is not rolling AND OAK-D clearing only
+      happens in the ~72 deg forward wedge, those phantom
+      marks accumulate over the session, each inflated to
+      a ~1 m cost mountain by the 0.50 m inflation halo.
+      Result: Stormy becomes paralyzed at doorways whose
+      `/map` shows clear but whose `/global_costmap` shows
+      blocked.
+      10 cm sits above almost all ground-noise artifacts
+      while still catching a shoe, book, or pet dish (real
+      hazards for a ~22 cm-tall robot).  The LOCAL costmap
+      keeps 2 cm for reactive collision avoidance - its
+      voxel layer and rolling window make ground noise
+      self-clearing there.
+
+    Withdrawn: earlier versions of this item recommended
+    trying `observation_persistence: 1.5` before flipping
+    `clearing: true`.  On Stormy the persistence path was
+    never tested - the raise-the-global-floor split above
+    solved the phantom-obstacle problem 2026-07-06,
+    predating the persistence advice.  Persistence may
+    still be worth trying on other robots whose stereo
+    noise looks less like a floor-plane artifact; it is
+    no longer the FIRST recommendation.
+
+    Live-config sync:  2026-09-11 (nav2_params.yaml on
+    articubot_one exploration branch @ 96c28e5, with the
+    10-line inline rationale about global-costmap phantom
+    accumulation).
 
 --------------------------------------------------------------
 62. ***AMCL (ADAPTIVE MONTE CARLO LOCALIZATION) vs SLAM
@@ -975,8 +1015,8 @@ PART VI - NAV2, SLAM, AMCL
 --------------------------------------------------------------
 64. ***AMCL LOCALIZATION-LOSS RECOVERY - MORE PARTICLES,
     MORE BEAMS, TIGHTER UPDATES***  (2026.03.14)
-    Tuning that stopped delocalization behind the kitchen
-    island (limited unique laser features):
+    Tuning that stopped delocalization in a feature-poor
+    open area (limited unique laser features):
         max_particles:            2000 -> 5000
         laser_max_beams:            60 -> 120
         laser_likelihood_max_dist: 2.0 -> 4.0
@@ -1198,8 +1238,8 @@ PART VIII - NETWORKING & MULTI-HOST ROS 2
             <Discovery>
               <ParticipantIndex>auto</ParticipantIndex>
               <Peers>
-                <Peer address="192.168.68.66"/>   <!-- Stingray -->
-                <Peer address="192.168.68.99"/>   <!-- LinuxBox -->
+                <Peer address="<ROBOT_WIFI_IP>"/>   <!-- Stingray -->
+                <Peer address="<LINUXBOX_ETH_IP>"/>   <!-- LinuxBox -->
               </Peers>
             </Discovery>
           </Domain>
@@ -1276,7 +1316,7 @@ PART VIII - NETWORKING & MULTI-HOST ROS 2
     USE LAN IP***  (2026.03.09)
     Foxglove Studio on Hank Rearden trying to reach
     `ws://localhost:8765` fails - localhost is the WINDOWS
-    machine.  Use `ws://192.168.68.66:8765` (Stingray's IP).
+    machine.  Use `ws://<ROBOT_WIFI_IP>:8765` (Stingray's IP).
     Get it on Linux with `hostname -I`.  Obvious in retrospect,
     burned an evening.
 
@@ -1292,7 +1332,7 @@ PART VIII - NETWORKING & MULTI-HOST ROS 2
           ServerAliveCountMax 6
           TCPKeepAlive yes
         Host Stingray
-          HostName 192.168.68.66      # wlxUSB dongle IP
+          HostName <ROBOT_WIFI_IP>      # wlxUSB dongle IP
           User ubuntu
           AddressFamily inet
         Host LinuxBox
@@ -1612,16 +1652,24 @@ PART X - TOOLS, ECOSYSTEM, PEOPLE
        https://github.com/slgrobotics/articubot_one/wiki/
        IMUs-%E2%80%90-Tips-and-Lessons
      Sanity-check axes with the accelerometer / gyro table.
-     For Humble, TX at 29.97 N, -95.19 W (NOAA WMMHR-2025
-     - World Magnetic Model High Resolution):
-       Declination      +1.67 deg
-       Inclination     +58.63 deg
-       Total intensity 46,139 nT (46.1 uT)
-       X (North)      +24,007 nT
-       Y (East)          +701 nT
-       Z (Down)       +39,395 nT
-     Use these for calibration checks against
-     `/imu/mag`.
+     For a mag-enabled BNO085 (Stormy's is 6-DOF, so this
+     table does not apply to Stormy - see item 32 canonical
+     mag-disable note), look up the local magnetic field
+     with NOAA's calculator, using WMMHR-2025 (World
+     Magnetic Model High Resolution) as the model:
+       https://www.ngdc.noaa.gov/geomag/calculators/magcalc.shtml
+     Enter your latitude and longitude; the calculator
+     returns:
+       Declination     (deg, angle between mag and true North)
+       Inclination     (deg, magnetic dip angle from horizontal)
+       Total intensity (nT or uT)
+       X (North), Y (East), Z (Down) components (nT)
+     Use those values as expected magnitudes for calibration
+     checks against `/imu/mag`.  For Stormy's latitude
+     (approximately 30 N, 95 W - central US Gulf Coast),
+     total intensity is roughly 46 uT and inclination is
+     roughly 59 deg, but only your specific location's
+     values are meaningful.
 
 --------------------------------------------------------------
 104. ***MOUNT EXFAT ON UBUNTU 24.04 WITHOUT THE -t FLAG***
@@ -1650,6 +1698,64 @@ PART X - TOOLS, ECOSYSTEM, PEOPLE
      at 114 MB/s over USB 3.0 (blue port); 13 GB compressed
      image, verified with `gzip -t`.
 
+--------------------------------------------------------------
+105. ***SILENCE FOXGLOVE_BRIDGE PARAMETER-PROBE WARNINGS
+     WITH `--log-level rclcpp:=error`***  (2026.08.30)
+     Symptom:  running foxglove_bridge alongside Nav2 +
+     robot_localization produces steady periodic spam in
+     the ekf_node and nav2 container logs:
+         [rclcpp] Failed to get parameters: parameter
+                  'imu1' is not initialized
+         [rclcpp] Failed to get parameters: parameter
+                  'FootprintApproach.points' is not initialized
+     Two paired offenders, roughly every 15 s each.
+     Cause:  foxglove_bridge polls every declared parameter
+     name on every reachable node every ~15 s (so the Studio
+     panel can offer them for editing).  When it queries a
+     name that IS declared elsewhere but is NOT declared on
+     the specific node being polled, rclcpp's client library
+     emits the warning.  Two names show up naturally on
+     Stormy:
+       - `imu1` on ekf_node - EKF's config uses imu0 only,
+         but the parameter namespace advertises imu1 as an
+         accepted slot.
+       - `FootprintApproach.points` on collision_monitor -
+         undeclared on purpose because the plugin subscribes
+         to `/local_costmap/published_footprint` dynamically.
+     Both are cosmetic - the graph is healthy, EKF is fusing,
+     collision_monitor is watching.  Neither affects
+     behavior.
+     Fix:  set `--log-level rclcpp:=error` on the CONTAINING
+     process arguments to hush only the rclcpp client-library
+     logger.  Named-node loggers (collision_monitor, ekf,
+     controller / planner / behavior servers, TF, DDS) still
+     log at their normal levels.
+       In ekf_imu_odom.launch.py (the ekf Node action):
+           Node(
+             ...
+             parameters=[ekf_params_file, ...],
+             remappings=[("odometry/filtered", "odometry/local")],
+             arguments=["--ros-args", "--log-level",
+                        "rclcpp:=error"],
+           )
+       In navigation.launch.py (the nav2 composable-node
+       container - covers every composable node loaded into
+       it):
+           ComposableNodeContainer(
+             name='nav2_container',
+             parameters=[nav2_params_file],
+             output='screen',
+             arguments=['--ros-args', '--log-level',
+                        'rclcpp:=error'],
+           )
+     General pattern:  when a downstream introspection tool
+     (foxglove_bridge, plotjuggler-remote, custom dashboards)
+     turns rclcpp `get_parameters` misses into log noise,
+     silence rclcpp SPECIFICALLY - not the whole node - on
+     the offending process.  Do NOT reach for
+     `--log-level fatal` on the whole container; that hides
+     real Nav2 / TF errors along with the noise.
+
 
 ================================================================
 INDEX BY SYMPTOM (quick-lookup when something goes wrong)
@@ -1670,6 +1776,7 @@ SLAM drift accumulates on far-room trip            56
 AMCL delocalizes in featureless area               64
 Doorway pinch prevents planning                    57, 58, 59
 IMU orientation resets differently every boot      42
+IMU stalls at imu_received_flag_ = 0x02 (accel only) 32
 Pi 5 low-voltage warning at splash / reboots       19, 24
 Bench PSU voltage sags with buck converter         16
 Motor melts / drive shaft won't turn               26
@@ -1681,6 +1788,8 @@ LiDAR points 90 deg off from expected              74
 `ros2 topic list` returns 5 topics on second host  47, 78, 79
 Pi 5 can't associate with 2.4 GHz WiFi             77
 Foxglove Studio connection failed                  82, 83
+foxglove_bridge log spam - "not initialized"       105
+Global costmap paralysis at doorways               61
 RViz keepout mask / map missing                    49
 Config edit didn't take effect                     40
 Driver won't compile after apt update              38, 76
@@ -1769,6 +1878,9 @@ Bulk chronology of the field-note items above:
   2026.07.31  item 104 (mount -t exfat vs kernel driver
                         on Ubuntu 24.04; first Tier-2
                         weekly backup)
+  2026.08.30  item 105 (silence foxglove_bridge parameter-
+                        probe log spam via
+                        `--log-level rclcpp:=error`)
 
 ================================================================
 END OF STINGRAY FIELD NOTES
@@ -1779,8 +1891,8 @@ Experience.wpd (source diary, 832 pp WordPerfect, still
 active) exported to Stingray Experience.txt (44,832 lines,
 235 stardated entries, 2023.05.06 - 2026.07.11) for text
 processing.
-104 items across 10 parts.  Each cited to the stardate it
-was learned.  Companion: Stingray_Builders_Manual.txt v1.0.
+105 items across 10 parts.  Each cited to the stardate it
+was learned.  Companion: Stingray_Builders_Manual.txt v1.1.
 
 "Not a destination, it's a journey."
                                   - James H Phelan, MD

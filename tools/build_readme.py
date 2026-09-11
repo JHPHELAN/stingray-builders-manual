@@ -31,8 +31,10 @@ TXT = REPO / "Stingray_Builders_Manual.txt"
 MD = REPO / "README.md"
 
 # Skip the .txt's own header + plain-text TOC (regenerated below).
-# 1-based line 78 is the opening `====` of Chapter 0; index 77 in 0-based.
-SKIP_LINES_BEFORE = 77
+# 1-based line 111 is the opening `====` of Chapter 0; index 110 in
+# 0-based.  (Updated 2026-09-11 when the placeholder key was added
+# to the front matter.)
+SKIP_LINES_BEFORE = 110
 
 # GitHub auto-slug (approximation of github-slugger v2):
 #   1) lowercase
@@ -62,14 +64,17 @@ DIVIDER_RE = re.compile(r"^[=\-]{40,}\s*$")
 FRONT_MATTER = """\
 # Stormy the Stingray - Builder's Manual
 
-Version 1.0 - Compiled 2026-07-20.
+Version 1.1 - Compiled 2026-07-20; public release 2026-09-11.
 
 If the SD card dies tomorrow, this document is how Stormy gets rebuilt.
 Present-tense, imperative, subsystem-oriented.  Every procedure is one
 that has been executed successfully on the real robot.
 
 - **Owner:** James H Phelan, MD (Humble, TX).
-- **Status:** Private for now; will be made public once presentable.
+- **Status:** Public.  Values in `<ANGLE_BRACKETS>` throughout are
+  placeholders for reader-specific local values (LAN IPs, SSIDs, MAC
+  addresses, house dimensions, dock offsets).  See the "Placeholder
+  key" block in [`Stingray_Builders_Manual.txt`](Stingray_Builders_Manual.txt).
 - **License:** CC BY 4.0 (see [License](#license) at the bottom).
 
 ## Companion files in this repo
@@ -77,7 +82,7 @@ that has been executed successfully on the real robot.
 | File | Purpose |
 | --- | --- |
 | [`Stingray_Builders_Manual.txt`](Stingray_Builders_Manual.txt) | **Source of truth.** Plain-text master copy of this document.  All edits go here first; `README.md` is regenerated from it (see [Regenerating this README](#regenerating-this-readme)). |
-| [`Stingray_Field_Notes.txt`](Stingray_Field_Notes.txt) | 104 numbered lessons + indexes distilled from the source log.  Cited throughout the Manual by item number. |
+| [`Stingray_Field_Notes.txt`](Stingray_Field_Notes.txt) | 105 numbered lessons + indexes distilled from the source log.  Cited throughout the Manual by item number. |
 | [`Stingray_Curation_Notes.txt`](Stingray_Curation_Notes.txt) | 17 chunks of raw stardated distillate from the source log.  Background material for the Manual. |
 | [`kicad/Stingray/`](kicad/Stingray/) | KiCad 10.0 project - schematic, custom symbol library, PCB stub.  Source for Appendix [G.9](#g9--stormy-schematic-2026-08-12png). |
 | [`images/`](images/) | Diagrams and photos catalogued in [Appendix G](#appendix-g---diagrams-and-photos). |
