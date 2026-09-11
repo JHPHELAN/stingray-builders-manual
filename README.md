@@ -277,13 +277,17 @@ Key collaborators:
   insight for the roboclaw_driver spurious over-current
   warnings.  Sounding board for years of design questions.
 
-- Sergei Grichine (slgrobotics) - author of the
-  articubot_one workspace layout Stormy adopted, the
+- Sergei Grichine (slgrobotics) - maintainer of the
+  slgrobotics fork of `articubot_one` (original by Josh
+  Newans / Articulated Robotics at
+  github.com/joshnewans/articubot_one).  Sergei adapted
+  and extended it for his own robot PLUCKY; Stormy is a
+  further fork of Sergei's fork.  Also author of the
   smbus2-based BNO085 driver, the wifi_logger_visualizer,
-  and other packages Stormy uses.
-  Offered to merge Stormy into his articubot_one repo as a
-  first-class supported robot in 2026.01.02 - now the `jp`
-  branch structure of Stormy's own fork.
+  and other packages Stormy uses.  Offered to merge
+  Stormy into his articubot_one repo as a first-class
+  supported robot in 2026.01.02 - now the `jp` branch
+  structure of Stormy's own fork.
 
 - Nathan (BasicMicro) - author of the RoboClaw firmware
   and Motion Studio.  Answered several email questions
@@ -4404,16 +4408,20 @@ Roberto Pensotti       Retired Italian engineer, superb 3D
                        Fidelity and countless projects
 Pito Salas             `handy` net_latency tool for
                        multi-machine DDS timing
-Sergei Grichine        Tutor and mentor.  articubot_one
-(slgrobotics)          workspace layout; bno08x_ros2_driver
-                       (smbus2); wifi_logger_visualizer; the
-                       "place IMU away from motors" rule;
-                       forked Articulated Robotics as the
-                       basis for his own robot PLUCKY, then
-                       tutored James through adapting it to
-                       the Stingray - first in simulation,
-                       then live.  Offered to merge Stormy
-                       into his repo 2026.01.02
+Sergei Grichine        Tutor and mentor.  Maintainer of the
+(slgrobotics)          slgrobotics fork of articubot_one
+                       (original: Josh Newans / Articulated
+                       Robotics at
+                       github.com/joshnewans/articubot_one),
+                       adapted and extended for his own robot
+                       PLUCKY; Stormy is a further fork.  Also
+                       author of the bno08x_ros2_driver
+                       (smbus2 refactor), wifi_logger_visualizer,
+                       and the "place IMU away from motors"
+                       rule.  Tutored James through adapting
+                       the workspace to the Stingray - first
+                       in simulation, then live.  Offered to
+                       merge Stormy into his repo 2026.01.02.
 slowrunner             HBRC list contributor
 saiaravind19           HBRC list contributor
 Marco Walther          Experienced roboteer especially with
