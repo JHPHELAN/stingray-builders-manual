@@ -427,12 +427,12 @@ Subsequent chapters go deep on each subsystem.
         Height                  0.087 m (URDF chassis-box
                                 nominal; see Chapter 12.2)
     Interior cavity height     0.076 m (measured = 3"
-                                side-plate height.  1/4"
-                                acrylic is 6.35 mm, not the
-                                6 mm sometimes claimed for
-                                these sheets - hence a small
-                                fudge between the URDF box
-                                and reality.)
+                                side-plate height.  Nominal
+                                1/4" acrylic is 6.35 mm, but
+                                the sheets used on Stormy
+                                measure ~6 mm or less -
+                                hence a small fudge between
+                                the URDF box and reality.)
     Chassis offset             0.0455 m
     Front-panel offset          0.090 m
 
