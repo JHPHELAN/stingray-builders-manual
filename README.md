@@ -307,8 +307,7 @@ Key collaborators:
   He and his lab assistants provided the equipment,
   training, advice, and hands-on assistance in CAD, laser
   cutting, 3D printing, and CNC machining (including edge-
-  drilling).  James bought his own cast acrylic; the only
-  acrylic supplied by the FabLab was occasional scrap.
+  drilling).
 
 - HBRC members with specific contributions cited throughout
   the source log:
