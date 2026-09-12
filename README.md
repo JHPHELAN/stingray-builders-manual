@@ -651,9 +651,11 @@ KiCAD schematic in [`kicad/Stingray/`](kicad/Stingray/) matches.
         +-- USB hub (power-capable but NOT currently
                      powered; runs bus-powered off the Pi
                      for now.  Feeds RTL8812BU WiFi dongle,
-                     LD19 LiDAR, USB audio DAC, drydock
-                     kbd/mouse.  Powering it from the LiPo
-                     bus is still open - testing needed.)
+                     USB audio DAC, drydock kbd/mouse.
+                     Powering it from the LiPo bus is still
+                     open - testing needed.  The LD19 LiDAR
+                     is NOT on the hub - it plugs directly
+                     into a USB 2.0 port on the Pi.)
 
 Notes on the topology (2026.07.20 authoritative per James):
 
