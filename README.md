@@ -657,30 +657,6 @@ KiCAD schematic in [`kicad/Stingray/`](kicad/Stingray/) matches.
                      is NOT on the hub - it plugs directly
                      into a USB 2.0 port on the Pi.)
 
-Notes on the topology (2026.07.20 authoritative per James):
-
-- The STPS10L25D diodes and the Pololu 3779 serve
-  different, unrelated purposes.  The STPS pair (one on the
-  LiPo positive lead, one on the bench-PSU positive lead)
-  provides source OR-ing so battery and bench PSU can
-  coexist during hot-swap without back-feeding each other.
-  The 3779 dumps regenerative-braking energy.  On Stormy
-  at ~3.2 kg the shunt alone is an adequate back-EMF
-  budget; no braking-resistor bank is installed.  See
-  Field Note item 22 for the light-robot back-EMF budget
-  and when to add an external shunt resistor.
-- The shunt regulator is INSTALLED, not bypassed
-  (installed on stardate 2025.12.07).
-- There is NO buck converter anywhere in Stormy's current
-  power system.  The 52Pi PD Power Extension Board is the
-  canonical Pi feed (12-24 V in, 5.1 V / 5 A out through
-  its USB-C connector to the Pi's USB-C power input - NOT
-  through the GPIO header).  The Anker powered USB hub of
-  the 2024-2025 era is gone; the current USB hub is power-
-  capable but is not currently powered from the LiPo bus.
-  Powering it from the bus (via some future regulator) is
-  still an open question pending testing.
-
 Fuse-holder proto-board (2026, pre-rewire as-built):
   Status (2026-09-06):  this section describes the physical
   hardware ACTUALLY INSTALLED right now, which pre-dates the
@@ -790,9 +766,7 @@ Symptom: Pi 5 reaches Ubuntu splash then reboots in a loop.
 Cause:   Insufficient current headroom at 5.1 V rail.
 Fix:     `PSU_MAX_CURRENT=5000` in rpi-eeprom-config;
     `usb_max_current_enable=1` in
-    /boot/firmware/config.txt; use the 52Pi board to feed
-    the Pi GPIO instead of USB-C jack.  See Field Note
-    item 19.
+    /boot/firmware/config.txt
 
 Symptom: RoboClaw reports MBATHIGH warning at rest with 0.0 A
     current on both motors.
@@ -856,8 +830,7 @@ Output shaft is geared 50:1 -> 3200 counts per revolution
 at the output shaft.
 
 Counts per meter derivation (from measured wheel):
-    Wheel radius:        0.0619 m (measured; use micrometer,
-                         average 3 points)
+    Wheel radius:        0.0619 m
     Circumference:       2 * pi * 0.0619 = 0.389 m
                          (also measured directly around the
                          tire with a tape measure - matches
@@ -871,14 +844,6 @@ config yaml (Chapter 4.4).
 
 ### 4.3  Wiring - motors and encoders
 
-
-On Stormy, motor and encoder wires from each motor run
-together in the same bundle from the motor back to the
-RoboClaw - the physical geometry pretty much forces this,
-and it is fine.  Cross-talk between motor drive and encoder
-lines is NOT an issue in practice, and cross-talk did NOT
-kill the encoders.  (The encoders were never actually dead
-at all - see below.)
 
 The encoder-killer mystery.  Two RoboClaw boards appeared
 to lose their M1 encoder input within days of each other in
@@ -895,7 +860,7 @@ item 17 for the full narrative and the defensive practice.
 Rule (Field Note item 17): after ANY driver work, AI-
 assisted Motion Studio session, or Motion Studio version
 upgrade, EXPLICITLY verify that both Encoder Modes are set
-to Quadrature (Ch 4.4).  The check takes 30 seconds.
+to Quadrature (Ch 4.4).
 
 ### 4.4  RoboClaw configuration
 
@@ -920,9 +885,7 @@ Wimble's roboclaw_studio):
     Max Current M1:      2.7 A     (derived from Pololu #4753
                                     stall 5.5 A: stall/3*1.5)
     Max Current M2:      2.7 A
-    Max Regen M1:        2.5 A     (LiFePO4-friendly;
-                                    approximately matched to
-                                    drive limit)
+    Max Regen M1:        2.5 A
     Max Regen M2:        2.5 A
     Min Main Battery:    default   (do not set below actual
                                     LiPo minimum)
