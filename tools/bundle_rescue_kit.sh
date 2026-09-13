@@ -131,8 +131,20 @@ echo
 echo "Pruning local Stormy_Rescue_*.tar.gz older than 28 days from $OUT_DIR..."
 find "$OUT_DIR" -maxdepth 1 -type f -name 'Stormy_Rescue_*.tar.gz' -mtime +28 -print -delete || true
 
+# Automatic upload to Hank Rearden's Dropbox\Stormy\ folder via
+# the ssh alias `hankrearden` (~/.ssh/config).  Requires
+# passwordless SSH from Stormy - see Chapter 20.6 install steps.
 echo
-echo "Next: FileZilla $OUT_TARBALL to Hank Rearden's"
-echo "      %USERPROFILE%\\Dropbox\\Stormy\\ folder.  Dropbox-side"
-echo "      pruning is handled by hank_prune_dropbox.ps1 on Hank"
-echo "      Rearden (see Chapter 20.6)."
+if ssh -o BatchMode=yes -o ConnectTimeout=5 hankrearden true 2>/dev/null; then
+    echo "scp $OUT_TARBALL -> hankrearden:Dropbox/Stormy/"
+    if scp -o BatchMode=yes -o ConnectTimeout=10 "$OUT_TARBALL" hankrearden:Dropbox/Stormy/ ; then
+        echo "Uploaded.  Dropbox will sync to cloud in the background."
+    else
+        echo "WARN: scp to hankrearden failed.  Local tarball is fine;" >&2
+        echo "      FileZilla it to %USERPROFILE%\\Dropbox\\Stormy\\ manually." >&2
+    fi
+else
+    echo "WARN: hankrearden not reachable via passwordless SSH." >&2
+    echo "      Local tarball is fine; FileZilla it to" >&2
+    echo "      %USERPROFILE%\\Dropbox\\Stormy\\ manually." >&2
+fi

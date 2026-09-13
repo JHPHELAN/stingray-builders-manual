@@ -7,12 +7,15 @@
 #   - dd|gzip the boot partition, verify with gzip -t
 #   - dd|gzip the root partition, verify with gzip -t
 #   - append a row to BACKUPS.md, commit, push
+#   - (optional --icloud) scp both images to Hank Rearden's
+#     iCloudDrive\Stormy\ folder and reset the Tier 4a stamp
 #
 # Usage (safe to invoke by absolute path from anywhere):
 #     bash /home/ubuntu/stingray-builders-manual/tools/backup_disk.sh
 #     bash .../backup_disk.sh --dry-run
 #     bash .../backup_disk.sh --note "Quick text for the notes column"
 #     bash .../backup_disk.sh --no-push          # skip git commit + push
+#     bash .../backup_disk.sh --icloud           # also do Tier 4a upload
 #
 # Or via alias (see Chapter 19.1):
 #     alias diskbackup='bash /home/ubuntu/stingray-builders-manual/tools/backup_disk.sh'
@@ -21,6 +24,8 @@
 #   - STORMYBAK USB HDD is plugged in and mounted at /mnt/backup
 #   - BACKUPS.md is tracked in a git checkout at $MANUAL_REPO_DIR
 #   - Passwordless git push is configured (SSH key added to GitHub)
+#   - For --icloud, passwordless SSH to `hankrearden` is configured
+#     (see Chapter 20.6 install steps)
 #
 # Exit status:
 #     0 = both partitions imaged, verified, and logged
@@ -30,14 +35,16 @@ set -euo pipefail
 
 DRY_RUN=0
 DO_PUSH=1
+DO_ICLOUD=0
 NOTE=""
 
 while [[ "${1:-}" != "" ]]; do
     case "$1" in
         --dry-run)  DRY_RUN=1 ;;
         --no-push)  DO_PUSH=0 ;;
+        --icloud)   DO_ICLOUD=1 ;;
         --note)     shift; NOTE="$1" ;;
-        -h|--help)  sed -n '2,30p' "$0"; exit 0 ;;
+        -h|--help)  sed -n '2,32p' "$0"; exit 0 ;;
         *)          echo "Unknown argument: $1" >&2; exit 2 ;;
     esac
     shift
@@ -155,6 +162,30 @@ if [[ "$DO_PUSH" -eq 1 ]]; then
     say "BACKUPS.md pushed to origin"
 else
     say "--no-push: skipped git commit/push.  Row is appended locally."
+fi
+
+# --- Optional Tier 4a upload to Hank Rearden's iCloudDrive ---
+if [[ "$DO_ICLOUD" -eq 1 ]]; then
+    say "Tier 4a: uploading images to hankrearden:iCloudDrive/Stormy/"
+    if ssh -o BatchMode=yes -o ConnectTimeout=5 hankrearden true 2>/dev/null; then
+        if scp -o BatchMode=yes -o ConnectTimeout=10 \
+               "$BOOT_IMG" "$ROOT_IMG" hankrearden:iCloudDrive/Stormy/ ; then
+            say "Uploaded.  iCloud will sync to cloud in the background (~15-30 min)."
+            # Reset the Tier 4a stamp so backup_check.sh knows we're fresh.
+            mkdir -p "$HOME/.stormy"
+            touch "$HOME/.stormy/last_icloud_copy"
+            say "Tier 4a stamp reset: $HOME/.stormy/last_icloud_copy"
+        else
+            echo "WARN: scp to hankrearden failed.  Images are local at $MOUNT_POINT;" >&2
+            echo "      FileZilla them to %USERPROFILE%\\iCloudDrive\\Stormy\\ manually," >&2
+            echo "      then run: touch $HOME/.stormy/last_icloud_copy" >&2
+        fi
+    else
+        echo "WARN: hankrearden not reachable via passwordless SSH." >&2
+        echo "      Images are local at $MOUNT_POINT; FileZilla them" >&2
+        echo "      to %USERPROFILE%\\iCloudDrive\\Stormy\\ manually," >&2
+        echo "      then run: touch $HOME/.stormy/last_icloud_copy" >&2
+    fi
 fi
 
 say "Done."
