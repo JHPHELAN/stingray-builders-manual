@@ -12,3 +12,4 @@ Tier-2 weekly full-disk backups per Chapter 20.4 of the Builder's Manual.
 | Date       | Boot img (raw / gz) | Root img (raw / gz) | Throughput | Verified | Notes |
 |------------|---------------------|---------------------|------------|----------|-------|
 | 2026-07-31 | 512 MB / 168 MB     | 238 GiB / 13 GB     | 114 MB/s (USB 3.0) | `gzip -t` OK on both | First backup after Manual v1.0. Discovered `mount -t exfat` gotcha on Ubuntu 24.04 — see Field Note 104. |
+| 2026-09-13 | 512 MB / 168 MB     | 238.0 GiB / 13.3 GiB     | 105 MB/s (USB 3.0) | `gzip -t` OK on both |  |
