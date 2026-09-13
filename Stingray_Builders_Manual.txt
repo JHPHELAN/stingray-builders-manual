@@ -1111,15 +1111,6 @@ Power:      52Pi PD Power Extension Board
 Cooling:    Standard Pi 5 fan + heat sink (Pi 5
             can throttle under sustained Nav2 + SLAM load;
             monitor `sudo vcgencmd get_throttled`).
-Enclosure:  Cast acrylic top and side plates, laser-cut
-            at FabLab.  Full mechanical CAD in
-            CAD files/ subdirectory of the workspace.
-
-Note on the Pi 5 history: Stormy is on the SECOND Pi 5.
-The first had a broken GPIO 14 TX pin, diagnosed on
-2025.03.17 with a minicom loopback test.  Replacement was
-ordered from Amazon and works fine.  See stardate 2025.03.17
-in the source log for the diagnostic method.
 
 ----------------------------------------------------------------
 5.2  UART configuration for RoboClaw
@@ -1227,11 +1218,7 @@ Physical mount:  At base_link - squarely between the two
     the lower deck.  Stormy's BNO085 has its magnetometer
     DISABLED (game-rotation-vector mode, see 6.3), so
     magnetic and electrical interference from the motors
-    and motor wiring is irrelevant to this IMU.  Sergei
-    Grichine's "place IMU far from motors" rule applied to
-    the earlier BNO055 (which used its magnetometer and did
-    suffer field noise); it does not apply to Stormy's
-    mag-disabled BNO085.
+    and motor wiring is irrelevant to this IMU.
 
 Pinout at Pi 5 GPIO header:
     Pin  3 (BLUE):    SDA  ->  BNO085 SDA
@@ -1404,7 +1391,15 @@ Bench verify (before mounting):
     sudo i2cdetect -y 1
     # Should show "4a" at row 40, column a
 
-    ros2 launch bno08x_driver bno085_i2c.launch.py
+    # DO NOT use the driver's stock launch file - it loads
+    # its own default yaml with address 0x4B and will fail
+    # with "BNO08x - Failed to send soft reset packet" on
+    # Stormy's 0x4A board.  Point at Stormy's config yaml
+    # explicitly:
+    ros2 run bno08x_driver bno08x_driver --ros-args \
+        --params-file /home/ubuntu/robot_ws/install/articubot_one/share/articubot_one/robots/stingray/config/bno085_i2c.yaml \
+        -r imu:=imu/data \
+        -r magnetic_field:=imu/mag
     # In a second terminal:
     ros2 topic hz /imu/data
     # Expected: 50 Hz average
@@ -2637,7 +2632,7 @@ Bash aliases assumed (Chapter 19).
                              # is stuck and you need to walk
                              # behind it with the pad to steer
                              # it out or back to the dock.
-    Terminal 2:  stingSLAM   # bringup in mapping mode
+    Terminal 2:  stingln slam:=true  # bringup in mapping mode
     Terminal 3:  (used for loadgraph / savegraph / merge)
 
 Cycle:
@@ -2771,7 +2766,7 @@ goal after N consecutive cycles produce zero candidates.
 ----------------------------------------------------------------
 
 Terminal 1:   joy
-Terminal 2:   stingSLAM
+Terminal 2:   stingln slam:=true
               (wait ~40 s for SLAM Toolbox + Nav2 to settle)
 Terminal 3:   loadgraph Stormy_ckpt_<timestamp> 0.0 0.0 0.0
 Terminal 4:   anchorln         # optional; publish waypoint
@@ -2948,7 +2943,7 @@ indicators.yaml as of 2026-08-01):
     headlights_startup_on_sec: 3.0
 
     # Beacon audio
-    beacon_sound_path: "/home/ubuntu/wav/klingon_alert.wav"
+    beacon_sound_path: "/home/ubuntu/wav/active/klingon_alert.wav"
     beacon_sound_repeat_sec: 3.6   # matches WAV length
     beacon_sound_device: ""        # "" = aplay default
     beacon_sound_default_on: false # start muted (X toggles)
@@ -2966,7 +2961,7 @@ indicators.yaml as of 2026-08-01):
     beacon_sound_button:   2       # X (blue)   - sound
 
     # Nav2 trouble alert (danger.wav)
-    alert_sound_path:  "/home/ubuntu/wav/danger.wav"
+    alert_sound_path:  "/home/ubuntu/wav/active/danger.wav"
     alert_sound_device: ""         # "" = follow beacon
     alert_min_interval_sec: 8.0
     alert_on_goal_aborted: false   # exploration: aborts
@@ -3013,13 +3008,27 @@ Live volume boost > 100% (GNOME Settings):
     Sound -> Over Amplification: ON
     Slider now goes to 150%.
 
-WAV files live in `~/wav/`.  Notable clips:
-    klingon_alert.wav          Beacon
-    danger.wav                 "Danger Will Robinson" -
-                               Nav2 abort / recovery
-    call-to-post.wav           stingln + stingSLAM startup
-    forcefield_powering_down.wav  scram (shutdown) alias
-    tos_alien_sound_2.wav      misc
+WAV files in production use live in `~/wav/active/`.  Only
+these clips are on the boot / run / alert / shutdown paths,
+and only this subdirectory is bundled by the Tier-4b rescue
+kit (Chapter 20.6):
+    klingon_alert.wav              Beacon (Y button)
+    danger.wav                     "Danger Will Robinson" -
+                                   Nav2 abort / recovery
+    first_call.wav                 Horse-racing bugle used
+                                   by the `stingln`
+                                   startup alias
+    jaws.wav                       Used by the `explore`
+                                   alias
+    forcefield_powering_down.wav   `scram` (shutdown) alias
+
+`~/wav/` itself is an archive of every sound-effect clip
+ever tried (klingon_sensor_alert.wav, melting.wav, and
+others).  Nothing in the archive is referenced by any live
+config or alias; do not point `beacon_sound_path` or
+`alert_sound_path` at it.  To promote a new clip to
+production, `cp` it into `~/wav/active/` first and update
+the corresponding alias or yaml.
 
 
 ================================================================
@@ -3067,7 +3076,7 @@ Hank Rearden (Windows 11 laptop):
 ----------------------------------------------------------------
 
 Terminal 1 (Stingray, LAUNCH panel):
-    stingln       # OR stingSLAM for mapping mode
+    stingln       # add 'slam:=true' for mapping mode
     # Wait for "Creating bond timer" or ~40 s
 
 Terminal 2 (Stingray, INDICATORS panel):
@@ -3220,15 +3229,17 @@ canonical set on Stingray:
 
     # Launches
     alias joy='ros2 launch articubot_one joystick.launch.py'
-    alias stingln='aplay -q ~/wav/call-to-post.wav; \
+    alias stingln='aplay -q ~/wav/active/first_call.wav & \
                    ros2 launch articubot_one stingray.launch.py'
-    alias stingSLAM='aplay -q ~/wav/call-to-post.wav; \
-                     ros2 launch articubot_one stingray.launch.py slam:=true'
+    # For mapping mode, pass slam:=true as a trailing arg,
+    # e.g. `stingln slam:=true` - bash aliases forward
+    # trailing tokens to the launch command unchanged.
     alias AMCLtest='ros2 launch articubot_one stingray.launch.py \
                      localizer_type:=amcl \
                      map:=/home/ubuntu/robot_ws/src/articubot_one/assets/maps/Stormy_merged.yaml'
     alias anchorln='python3 ~/robot_ws/src/articubot_one/scripts/anchor_display.py'
-    alias explore='ros2 launch articubot_one explore.launch.py'
+    alias explore='aplay -q ~/wav/active/jaws.wav & \
+                   ros2 launch articubot_one explore.launch.py'
     alias keepout='ros2 launch articubot_one keepout.launch.py'
     alias fox='ros2 launch foxglove_bridge foxglove_bridge_launch.xml'
     alias wifi='ros2 run articubot_one wifi_publisher.py'
@@ -3248,7 +3259,7 @@ canonical set on Stingray:
     mapckpt()   { ...  }   # save with timestamped filename
 
     # Shutdown
-    alias scram='aplay -q ~/wav/forcefield_powering_down.wav; \
+    alias scram='aplay -q ~/wav/active/forcefield_powering_down.wav; \
                  sudo shutdown -h now'
 
     # Volume for whichever USB audio device is default.
@@ -3511,6 +3522,26 @@ Substitute your own device letters and mount label if
 different; verify with `lsblk` and `sudo blkid` before
 running any `dd` command.
 
+Two ways to run the weekly backup:
+
+  * Automated (preferred).  Run `diskbackup` on Stormy - it
+    wraps the whole Section A workflow, images both
+    partitions, verifies gzip integrity, computes the raw
+    throughput, and appends a new row to BACKUPS.md (which
+    lives inside this repo) with an automatic git push.  See
+    tools/backup_disk.sh and the "diskbackup" alias line in
+    Chapter 19.1.
+
+  * Manual step-by-step (Section A below).  Kept as the
+    canonical reference for what the automated wrapper does
+    under the hood, and for the disaster case when the
+    script isn't available (post-rebuild, before you have
+    cloned this repo onto a fresh SSD).
+
+Either way, the resulting files land at the same paths and
+BACKUPS.md gets the same six columns.  Only the typing
+count differs.
+
 ----------------------------------------------------------------
 Section A - Weekly backup, step by step
 ----------------------------------------------------------------
@@ -3626,11 +3657,13 @@ A8.  Unmount cleanly, THEN unplug.  Run:
      unplug the HDD.  Yanking a mounted exFAT drive can corrupt
      the filesystem catalog.
 
-A9.  Log it.  Record date, both file sizes, and the observed
-     MB/s for the root run in whatever your backup log is (this
-     manual's companion memory file `stingray-backup-log.md` if
-     you have it; a paper notebook otherwise).  A slow trend in
-     MB/s is the earliest warning of a failing HDD.
+A9.  Log it.  If you ran `diskbackup`, this step is already
+     done - the wrapper appended a new row to BACKUPS.md and
+     pushed it.  If you ran Section A by hand, add a row to
+     BACKUPS.md manually with date, boot img (raw/gz), root
+     img (raw/gz), throughput, verification result, and any
+     notes.  A slow trend in MB/s is the earliest warning of
+     a failing HDD.
 
 ----------------------------------------------------------------
 Section B - One-time drive format
@@ -3702,6 +3735,183 @@ coordinating.
 Never `chown -R` outside your home directory unless you
 know exactly what you're changing.
 
+----------------------------------------------------------------
+20.6  Off-site tier (cloud, via Hank Rearden gateway)
+----------------------------------------------------------------
+
+Rationale:  Tier 2 (the weekly NVMe image on the STORMYBAK
+USB HDD) lives physically next to Stormy.  Fire, flood, or
+theft takes both the robot's SSD and the backup HDD in one
+event.  Tier 1 (GitHub) already covers code + config + docs
+off-site.  Tier 4 extends that coverage to the material that
+is NOT in git.
+
+Two backends, both routed through Hank Rearden (Windows 11
+laptop) because that is where the cloud clients already run.
+Do NOT install iCloud Drive or Dropbox directly on Stormy's
+Pi 5 - both spawn inotify watchers and background processes
+that interfere with the sensor-hub timing budget.
+
+Where the raw material lives (important for scoping):
+    Stormy-only:  ~/wav/*.wav, live dotfiles, ~/robot_ws/*
+    Hank-only:    Stingray_Builders_Manual.txt,
+                  Stingray_Field_Notes.txt,
+                  Stingray_Curation_Notes.txt,
+                  CorelDraw blueprints, WordPerfect source
+                  log, VS Code / PuTTY / FileZilla config
+    Off-site:     GitHub (all repo material - Tier 1),
+                  OneDrive (Hank content layer)
+
+The three .txt companion documents live on Hank Rearden
+under OneDrive and in the JHPHELAN/stingray-builders-manual
+GitHub repo - they are already covered off-site by two
+independent paths.  The Stormy-side rescue kit therefore
+does NOT need to include them.
+
+Tier 4a - Monthly full NVMe image -> iCloud Drive:
+    Quota:    50 GB (~38.9 GB free as of 2026-09-13)
+    Cadence:  monthly, keep current + previous month
+    Size:     ~15 GB per monthly pair (~30 GB rolling)
+    Recovery: full bit-for-bit restore.  Section C above,
+              but the .img.gz files come from iCloud instead
+              of the local HDD.
+
+Tier 4b - Weekly rescue kit -> Dropbox:
+    Quota:    2.75 GB free tier
+    Cadence:  weekly, keep last 4
+    Size:     ~10-50 MB per bundle (only the ~5 production
+              WAV clips ship, per Ch 16.4)
+    Contents: ~/wav/active/*.wav (Stormy's only truly
+                                  non-git file set)
+              live ~/stingray-dotfiles/ tree
+              current Stormy_merged.{pgm,yaml,png}
+                  + Stormy_blueprint.{pgm,yaml,png}
+              robots/stingray/config/*.yaml
+              MANIFEST.txt (date, host, kernel, sizes,
+                  and source paths for the restore step)
+    Recovery: NOT a full restore.  Gets Stormy to
+              "Chapter 21 rebuild + drop these files back
+              into place" state within an hour of a fresh
+              Ubuntu install.
+
+Combined, this is the classic 3-2-1 backup rule (3 copies,
+2 media, 1 off-site) for the material that matters:
+    Copy 1:  live NVMe on Stormy
+    Copy 2:  STORMYBAK USB HDD (Tier 2, weekly)
+    Copy 3:  iCloud (Tier 4a monthly) + Dropbox (Tier 4b weekly)
+
+Scripts (tracked in this repo under `tools/`):
+    tools/backup_check.sh        Daily orchestrator that
+                                 reports the age of every
+                                 tier and prints an
+                                 actionable next step per
+                                 WARN row.  Optional --prune
+                                 sweeps out old rescue kits
+                                 on Stormy.
+    tools/bundle_rescue_kit.sh   Generates the Tier 4b
+                                 tarball on Stormy.  Auto-
+                                 prunes local rescue kits
+                                 > 28 days old after every
+                                 successful write.
+    tools/hank_prune_dropbox.ps1 PowerShell companion for
+                                 Hank Rearden.  Deletes
+                                 rescue kits > 28 days from
+                                 %USERPROFILE%\Dropbox\Stormy\.
+                                 Wire to Task Scheduler
+                                 (weekly Sunday 03:00) with
+                                 -Apply so the Dropbox side
+                                 prunes itself.
+
+Two verbs, non-overlapping:
+    backup   status report (plus optional --prune)
+    rescue   generate the Tier-4b tarball (auto-prunes local
+             copies afterward)
+When `backup` flags Tier 4b stale, run `rescue`.
+
+Install on Stormy (one-time):
+    Clone this Manual's repo somewhere stable and add
+    absolute-path aliases to `~/.bash_aliases`:
+
+        # In ~/.bash_aliases (Chapter 19.1):
+        alias backup='bash /home/ubuntu/stingray-builders-manual/tools/backup_check.sh'
+        alias rescue='bash /home/ubuntu/stingray-builders-manual/tools/bundle_rescue_kit.sh'
+        alias diskbackup='bash /home/ubuntu/stingray-builders-manual/tools/backup_disk.sh'
+
+    (Substitute the actual clone path.  Absolute-path
+    invocation is deliberate - do not use `cd` first, so
+    the aliases keep working from any cwd.)
+
+    Configure a GitHub SSH key on Stormy so `diskbackup`
+    can push the updated BACKUPS.md non-interactively.  See
+    Chapter 10.7 (SSH keys and Git).
+
+Install on Hank Rearden (one-time):
+    1. Create the two cloud folders:
+           %USERPROFILE%\iCloudDrive\Stormy\
+           %USERPROFILE%\Dropbox\Stormy\
+    2. Schedule the Dropbox pruner via Task Scheduler.
+       See the header comment of tools/hank_prune_dropbox.ps1
+       for the exact trigger and action fields.
+
+Tier 4a workflow (monthly full image):
+    Do this after the first weekly Section A backup of each
+    month, while the HDD is still plugged in.
+
+    1. On Hank Rearden, FileZilla to Stormy and drag the two
+       most recent files
+           /mnt/backup/nvme_boot_YYYY-MM-DD.img.gz
+           /mnt/backup/nvme_root_YYYY-MM-DD.img.gz
+       into
+           %USERPROFILE%\iCloudDrive\Stormy\.
+    2. iCloud syncs the two files in the background
+       (~15-30 min on a home upload link).
+    3. On Stormy, tell backup_check.sh that a copy just
+       happened so the "days since Tier 4a" counter resets:
+           mkdir -p ~/.stormy && touch ~/.stormy/last_icloud_copy
+    4. In %USERPROFILE%\iCloudDrive\Stormy\, delete anything
+       older than the previous month's pair.  Keeps two
+       generations rolling.
+
+Tier 4b workflow (weekly rescue kit):
+    Simplest daily habit is to run `backup` at the top of
+    every session and act on what it prints.
+
+    1. On Stormy, check status:
+           backup
+       If the Tier4b row shows WARN, generate a new bundle:
+           rescue           # auto-prunes local copies > 28d
+       Output:  ~/Stormy_Rescue_YYYY-MM-DD.tar.gz
+       Size:    typically 50-200 MB.
+       `rescue --dry-run` previews contents without writing.
+    2. FileZilla from Hank Rearden, drag the .tar.gz into
+       %USERPROFILE%\Dropbox\Stormy\.
+    3. Dropbox syncs in the background.
+    4. Dropbox-side pruning runs automatically each week
+       via hank_prune_dropbox.ps1 in Task Scheduler
+       (see Install on Hank Rearden above).  No manual
+       cleanup needed.
+
+Restore paths:
+
+    Full disaster (Tier 4a):
+        1. Recover the two most recent .img.gz files from
+           iCloud on Hank Rearden.
+        2. FileZilla to a rescue Linux box with a fresh
+           NVMe SSD attached.
+        3. Follow Section C above.
+
+    Configuration + content only, on top of a fresh
+    Chapter 21 rebuild (Tier 4b):
+        1. Recover the most recent .tar.gz from Dropbox.
+        2. Extract into a scratch directory on Stormy:
+               mkdir -p /tmp/rescue
+               tar -xzf Stormy_Rescue_YYYY-MM-DD.tar.gz \
+                   -C /tmp/rescue
+        3. Copy each subtree back into place using the
+           source paths recorded in /tmp/rescue/MANIFEST.txt.
+        4. Restore the .txt companion documents separately:
+           either clone JHPHELAN/stingray-builders-manual on
+           Hank Rearden, or recover them from OneDrive.
 
 ================================================================
 CHAPTER 21 - POST-DISASTER FULL-REBUILD RECIPE
@@ -3756,10 +3966,27 @@ Step 5 - Restore udev rules:
         ls -l /dev/ldlidar
         # Should show a symlink to ttyUSB0
 
-Step 6 - Verify hardware:
-    ros2 launch bno08x_driver bno085_i2c.launch.py
-    ros2 launch ldlidar_ros2 ld19.launch.py
-    ros2 launch depthai_ros_driver_v3 camera.launch.py
+Step 6 - Verify hardware (use Stormy's own launch / run
+    commands, not the upstream stock launches):
+
+    # BNO085 - stock launch loads driver's default yaml at
+    # address 0x4B and will fail on Stormy (0x4A).  Use
+    # `ros2 run` with the Stingray config yaml explicitly:
+    ros2 run bno08x_driver bno08x_driver --ros-args \
+        --params-file /home/ubuntu/robot_ws/install/articubot_one/share/articubot_one/robots/stingray/config/bno085_i2c.yaml \
+        -r imu:=imu/data \
+        -r magnetic_field:=imu/mag
+
+    # LD19 LiDAR - upstream launch usually works, but
+    # Stormy's launch file has the udev symlink and the
+    # -90 deg static TF already applied:
+    ros2 launch articubot_one ldlidar.launch.py
+
+    # OAK-D - depthai_ros_driver_v3 has NO camera.launch.py
+    # (that was renamed in the v3 cascade, see Ch 11.4).
+    # Use Stormy's oakd.launch.py which loads oakd_nav_slim
+    # and the parent_frame=oakd_front_panel arg:
+    ros2 launch articubot_one oakd.launch.py
 
 Step 7 - Test RoboClaw:
     ros2 run roboclaw_driver roboclaw_driver_node \
@@ -3769,16 +3996,21 @@ Step 7 - Test RoboClaw:
 
 Step 8 - Full launch dry-run (wheels off ground):
     joy
+    [alias joy='ros2 launch articubot_one joystick.launch.py']
     stingln
-    # Verify joystick moves motors, /odom updates,
-    # /joint_states publishes, /scan appears.
+    [alias stingln='aplay -q ~/wav/first_call.wav & ros2 launch articubot_one stingray.launch.py']
+    # Verify joystick moves motors
+    # Be sure these publish:
+    ros2 topic echo /odom
+    ros2 topic echo /joint_states
+    ros2 topic echo /scan
 
 Step 9 - Restore map assets:
     Already in the articubot_one repo under
     `assets/maps/`.  Verify:
         ls ~/robot_ws/src/articubot_one/assets/maps/
-        # Should include Stormy_blueprint.pgm/yaml
-        # and Stormy_merged.pgm/yaml.
+            Stormy_blueprint.pgm/yaml
+            Stormy_merged.pgm/yaml.
 
 Step 10 - Restore WAV files:
     NOT in git.  Copy from backup HDD:
@@ -4285,7 +4517,7 @@ build                                 # colcon build + source
 artbld                                # articubot_one only
 joy                                   # joystick
 stingln                               # bringup (AMCL default)
-stingSLAM                             # bringup in mapping mode
+                                      # add 'slam:=true' for mapping mode
 AMCLtest                              # bringup with Stormy_merged
 fox                                   # foxglove_bridge
 wifi                                  # wifi_publisher.py
