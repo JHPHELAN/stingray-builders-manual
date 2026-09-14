@@ -12,6 +12,8 @@
 #   - (--icloud-only)   skip dd|gzip; verify + upload today's ALREADY-EXISTING
 #                       images (recovery from a failed --icloud run,
 #                       or deferred Tier 4a upload)
+#   - unmount /mnt/backup so STORMYBAK is safe to unplug
+#     (skip with --no-unmount)
 #
 # Usage (safe to invoke by absolute path from anywhere):
 #     bash /home/ubuntu/stingray-builders-manual/tools/backup_disk.sh
@@ -20,6 +22,7 @@
 #     bash .../backup_disk.sh --no-push          # skip git commit + push
 #     bash .../backup_disk.sh --icloud           # also do Tier 4a upload
 #     bash .../backup_disk.sh --icloud-only      # upload existing images only
+#     bash .../backup_disk.sh --no-unmount       # leave /mnt/backup mounted at end
 #
 # Or via alias (see Chapter 19.1):
 #     alias diskbackup='bash /home/ubuntu/stingray-builders-manual/tools/backup_disk.sh'
@@ -41,6 +44,7 @@ DRY_RUN=0
 DO_PUSH=1
 DO_ICLOUD=0
 ICLOUD_ONLY=0
+DO_UNMOUNT=1
 NOTE=""
 
 while [[ "${1:-}" != "" ]]; do
@@ -49,8 +53,9 @@ while [[ "${1:-}" != "" ]]; do
         --no-push)     DO_PUSH=0 ;;
         --icloud)      DO_ICLOUD=1 ;;
         --icloud-only) DO_ICLOUD=1; ICLOUD_ONLY=1 ;;
+        --no-unmount)  DO_UNMOUNT=0 ;;
         --note)        shift; NOTE="$1" ;;
-        -h|--help)     sed -n '2,36p' "$0"; exit 0 ;;
+        -h|--help)     sed -n '2,38p' "$0"; exit 0 ;;
         *)             echo "Unknown argument: $1" >&2; exit 2 ;;
     esac
     shift
@@ -212,6 +217,19 @@ if [[ "$DO_ICLOUD" -eq 1 ]]; then
         echo "      Images are local at $MOUNT_POINT; FileZilla them" >&2
         echo "      to %USERPROFILE%\\iCloudDrive\\Stormy\\ manually," >&2
         echo "      then run: touch $HOME/.stormy/last_icloud_copy" >&2
+    fi
+fi
+
+# --- Unmount STORMYBAK so it is safe to unplug (skip with --no-unmount) ---
+if [[ "$DO_UNMOUNT" -eq 1 ]]; then
+    say "Unmounting $MOUNT_POINT so STORMYBAK is safe to unplug"
+    sudo sync
+    if sudo umount "$MOUNT_POINT" 2>/dev/null; then
+        say "Unmounted.  STORMYBAK is safe to unplug."
+    else
+        echo "WARN: umount $MOUNT_POINT failed (device busy?).  Do it manually:" >&2
+        echo "      sudo sync && sudo umount $MOUNT_POINT" >&2
+        echo "      lsof +f -- $MOUNT_POINT     # if the above fails" >&2
     fi
 fi
 

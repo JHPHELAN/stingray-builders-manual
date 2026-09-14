@@ -3505,8 +3505,11 @@ Two ways to run the weekly backup:
   * Automated (preferred).  Run `diskbackup` on Stormy - it
     wraps the whole Section A workflow, images both
     partitions, verifies gzip integrity, computes the raw
-    throughput, and appends a new row to BACKUPS.md (which
-    lives inside this repo) with an automatic git push.  See
+    throughput, appends a new row to BACKUPS.md (which
+    lives inside this repo) with an automatic git push,
+    and unmounts /mnt/backup at the end so STORMYBAK is
+    safe to unplug (pass `--no-unmount` to skip that last
+    step if you plan to chain another operation).  See
     tools/backup_disk.sh and the "diskbackup" alias line in
     Chapter 19.1.
 
