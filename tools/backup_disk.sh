@@ -194,7 +194,7 @@ fi  # end of "not --icloud-only" fresh-backup block
 # --- Optional Tier 4a upload to Hank Rearden's iCloudDrive ---
 if [[ "$DO_ICLOUD" -eq 1 ]]; then
     say "Tier 4a: uploading images to hankrearden:iCloudDrive/Stormy/"
-    if ssh -o BatchMode=yes -o ConnectTimeout=5 hankrearden true 2>/dev/null; then
+    if ssh -o BatchMode=yes -o ConnectTimeout=5 hankrearden "exit 0" 2>/dev/null; then
         if scp -o BatchMode=yes -o ConnectTimeout=10 \
                "$BOOT_IMG" "$ROOT_IMG" hankrearden:iCloudDrive/Stormy/ ; then
             say "Uploaded.  iCloud will sync to cloud in the background (~15-30 min)."

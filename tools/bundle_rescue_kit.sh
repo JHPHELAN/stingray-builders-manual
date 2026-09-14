@@ -135,7 +135,7 @@ find "$OUT_DIR" -maxdepth 1 -type f -name 'Stormy_Rescue_*.tar.gz' -mtime +28 -p
 # the ssh alias `hankrearden` (~/.ssh/config).  Requires
 # passwordless SSH from Stormy - see Chapter 20.6 install steps.
 echo
-if ssh -o BatchMode=yes -o ConnectTimeout=5 hankrearden true 2>/dev/null; then
+if ssh -o BatchMode=yes -o ConnectTimeout=5 hankrearden "exit 0" 2>/dev/null; then
     echo "scp $OUT_TARBALL -> hankrearden:Dropbox/Stormy/"
     if scp -o BatchMode=yes -o ConnectTimeout=10 "$OUT_TARBALL" hankrearden:Dropbox/Stormy/ ; then
         echo "Uploaded.  Dropbox will sync to cloud in the background."
