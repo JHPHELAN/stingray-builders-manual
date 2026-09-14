@@ -7,8 +7,11 @@
 #   - dd|gzip the boot partition, verify with gzip -t
 #   - dd|gzip the root partition, verify with gzip -t
 #   - append a row to BACKUPS.md, commit, push
-#   - (optional --icloud) scp both images to Hank Rearden's
-#     iCloudDrive\Stormy\ folder and reset the Tier 4a stamp
+#   - (--icloud)        scp both images to Hank Rearden's
+#                       iCloudDrive\Stormy\ folder and reset Tier 4a stamp
+#   - (--icloud-only)   skip dd|gzip; verify + upload today's ALREADY-EXISTING
+#                       images (recovery from a failed --icloud run,
+#                       or deferred Tier 4a upload)
 #
 # Usage (safe to invoke by absolute path from anywhere):
 #     bash /home/ubuntu/stingray-builders-manual/tools/backup_disk.sh
@@ -16,6 +19,7 @@
 #     bash .../backup_disk.sh --note "Quick text for the notes column"
 #     bash .../backup_disk.sh --no-push          # skip git commit + push
 #     bash .../backup_disk.sh --icloud           # also do Tier 4a upload
+#     bash .../backup_disk.sh --icloud-only      # upload existing images only
 #
 # Or via alias (see Chapter 19.1):
 #     alias diskbackup='bash /home/ubuntu/stingray-builders-manual/tools/backup_disk.sh'
@@ -36,16 +40,18 @@ set -euo pipefail
 DRY_RUN=0
 DO_PUSH=1
 DO_ICLOUD=0
+ICLOUD_ONLY=0
 NOTE=""
 
 while [[ "${1:-}" != "" ]]; do
     case "$1" in
-        --dry-run)  DRY_RUN=1 ;;
-        --no-push)  DO_PUSH=0 ;;
-        --icloud)   DO_ICLOUD=1 ;;
-        --note)     shift; NOTE="$1" ;;
-        -h|--help)  sed -n '2,32p' "$0"; exit 0 ;;
-        *)          echo "Unknown argument: $1" >&2; exit 2 ;;
+        --dry-run)     DRY_RUN=1 ;;
+        --no-push)     DO_PUSH=0 ;;
+        --icloud)      DO_ICLOUD=1 ;;
+        --icloud-only) DO_ICLOUD=1; ICLOUD_ONLY=1 ;;
+        --note)        shift; NOTE="$1" ;;
+        -h|--help)     sed -n '2,36p' "$0"; exit 0 ;;
+        *)             echo "Unknown argument: $1" >&2; exit 2 ;;
     esac
     shift
 done
@@ -70,9 +76,13 @@ mountpoint -q "$MOUNT_POINT" || die "$MOUNT_POINT is not mounted; plug in STORMY
 [[ -d "$MANUAL_REPO_DIR/.git" ]] || die "no git checkout at $MANUAL_REPO_DIR (needed for BACKUPS.md automation)"
 [[ -f "$BACKUPS_MD" ]] || die "BACKUPS.md not found at $BACKUPS_MD"
 
-# Refuse to overwrite an existing image with the same date tag.
-if [[ -f "$BOOT_IMG" || -f "$ROOT_IMG" ]]; then
-    die "images already exist for $DATE_TAG at $MOUNT_POINT.  Move or delete them first."
+# Existing-image policy depends on mode.
+if [[ "$ICLOUD_ONLY" -eq 1 ]]; then
+    # --icloud-only: today's images must already exist; we reuse them.
+    [[ -f "$BOOT_IMG" ]] || die "--icloud-only requires $BOOT_IMG to exist (run diskbackup without --icloud-only first)"
+    [[ -f "$ROOT_IMG" ]] || die "--icloud-only requires $ROOT_IMG to exist (run diskbackup without --icloud-only first)"
+elif [[ -f "$BOOT_IMG" || -f "$ROOT_IMG" ]]; then
+    die "images already exist for $DATE_TAG at $MOUNT_POINT.  Move or delete them first, or use --icloud-only to just upload them."
 fi
 
 # Raw partition sizes (bytes) for the throughput calculation.
@@ -92,6 +102,21 @@ BOOT_RAW_H=$(pretty_size "$BOOT_RAW")
 ROOT_RAW_H=$(pretty_size "$ROOT_RAW")
 
 say "STORMYBAK mounted at $MOUNT_POINT"
+
+if [[ "$ICLOUD_ONLY" -eq 1 ]]; then
+    say "--icloud-only: reusing existing images (skipping dd|gzip and BACKUPS.md)"
+    say "  $BOOT_IMG  ($(sudo stat -c %s "$BOOT_IMG" | numfmt --to=iec --suffix=B))"
+    say "  $ROOT_IMG  ($(sudo stat -c %s "$ROOT_IMG" | numfmt --to=iec --suffix=B))"
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        say "DRY RUN - would gzip -t both, then scp to hankrearden:iCloudDrive/Stormy/"
+        exit 0
+    fi
+    say "gzip -t $BOOT_IMG"
+    sudo gzip -t "$BOOT_IMG" || die "$BOOT_IMG failed gzip -t; refusing to upload a corrupt file"
+    say "gzip -t $ROOT_IMG"
+    sudo gzip -t "$ROOT_IMG" || die "$ROOT_IMG failed gzip -t; refusing to upload a corrupt file"
+else
+
 say "Boot: $BOOT_DEV -> $BOOT_IMG   ($BOOT_RAW_H raw)"
 say "Root: $ROOT_DEV -> $ROOT_IMG   ($ROOT_RAW_H raw)"
 
@@ -163,6 +188,8 @@ if [[ "$DO_PUSH" -eq 1 ]]; then
 else
     say "--no-push: skipped git commit/push.  Row is appended locally."
 fi
+
+fi  # end of "not --icloud-only" fresh-backup block
 
 # --- Optional Tier 4a upload to Hank Rearden's iCloudDrive ---
 if [[ "$DO_ICLOUD" -eq 1 ]]; then

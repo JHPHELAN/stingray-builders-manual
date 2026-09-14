@@ -1756,6 +1756,68 @@ PART X - TOOLS, ECOSYSTEM, PEOPLE
      `--log-level fatal` on the whole container; that hides
      real Nav2 / TF errors along with the noise.
 
+--------------------------------------------------------------
+106. ***SABRENT USB HDD ON PI 5 NEEDS `usb-storage.quirks`
+     TO SURVIVE HEAVY READS***  (2026.09.13)
+     Symptom:  a fresh weekly Section A backup writes both
+     images cleanly at 105 MB/s and `gzip -t` passes right
+     after `dd`, BUT a subsequent heavy read (e.g. `scp
+     nvme_root_*.img.gz hankrearden:...` for Tier 4a) dies
+     seconds in with:
+         scp: read local ".../nvme_boot_*.img.gz":
+              Input/output error
+     Dmesg shows the smoking gun:
+         scsi host0: uas_pre_reset: timed out
+         sd 0:0:0:0: [sda] tag#N FAILED Result:
+             hostbyte=DID_NO_CONNECT
+         I/O error, dev sda, sector <big number>
+         usb 3-1: reset SuperSpeed USB device
+         scsi 1:0:0:0: Direct-Access  SABRENT  4102
+     The device re-enumerates as /dev/sdb (or bounces back
+     and forth between sda/sdb).  Every heavy read attempt
+     repeats the reset.
+     Cause:  the Sabrent USB 3.0 enclosure uses a JMicron
+     bridge (VID:PID 152d:a578).  This chipset is a known
+     UAS (USB Attached SCSI) offender - it advertises UAS
+     support but botches queue management under sustained
+     read load on Pi 5's xHCI, hitting a driver timeout
+     that force-resets the whole USB device.  Writes are
+     less affected because there is more idle time between
+     dd blocks; reads by scp pump the pipeline flat-out.
+     Fix:  force the enclosure to use the older BOT
+     (Bulk-Only Transport) mode via a kernel cmdline quirk.
+       1. Add `usb-storage.quirks=152d:a578:u` to the
+          FRONT of /boot/firmware/cmdline.txt (single line;
+          preserve everything after it).  Back up first:
+            sudo cp /boot/firmware/cmdline.txt \
+                    /boot/firmware/cmdline.txt.bak.$(date +%F)
+            sudo sed -i \
+                '1s|^|usb-storage.quirks=152d:a578:u |' \
+                /boot/firmware/cmdline.txt
+       2. Reboot.
+       3. Verify with `lsusb -t` - the Sabrent entry now
+          shows `Driver=usb-storage` at 5000M instead of
+          `Driver=uas`.  `cat /proc/cmdline` should include
+          the quirk.
+     After the reboot, `scp /mnt/backup/nvme_root_*.img.gz
+     hankrearden:iCloudDrive/Stormy/` completes cleanly at
+     ~50 MB/s over SSH-encrypted gigabit ethernet with no
+     UAS timeouts.
+     Look up your own enclosure's VID:PID with
+     `lsusb | grep -i <label>`; the `u` flag means "disable
+     UAS" (there are others - see `Documentation/admin-
+     guide/kernel-parameters.txt` in the Linux tree for the
+     full quirk-letter table).
+     Discovered while wiring up the automated `diskbackup
+     --icloud` Tier 4a workflow: the fresh dd|gzip write
+     of today's image had succeeded 40 min earlier and
+     verified clean, but the moment scp started reading it
+     back the drive bus-reset.  Post-quirk retry succeeded
+     first try.
+     Companion issue for the same enclosure at first
+     mount:  item 104 (drop `-t exfat`, kernel driver does
+     the right thing).
+
 
 ================================================================
 INDEX BY SYMPTOM (quick-lookup when something goes wrong)
@@ -1789,6 +1851,8 @@ LiDAR points 90 deg off from expected              74
 Pi 5 can't associate with 2.4 GHz WiFi             77
 Foxglove Studio connection failed                  82, 83
 foxglove_bridge log spam - "not initialized"       105
+Sabrent USB HDD: scp/gzip -t "Input/output error",
+    dmesg "uas_pre_reset: timed out"                106
 Global costmap paralysis at doorways               61
 RViz keepout mask / map missing                    49
 Config edit didn't take effect                     40
@@ -1881,6 +1945,9 @@ Bulk chronology of the field-note items above:
   2026.08.30  item 105 (silence foxglove_bridge parameter-
                         probe log spam via
                         `--log-level rclcpp:=error`)
+  2026.09.13  item 106 (JMicron 152d:a578 UAS bug on
+                        Sabrent HDD; force BOT via
+                        `usb-storage.quirks`)
 
 ================================================================
 END OF STINGRAY FIELD NOTES
@@ -1891,7 +1958,7 @@ Experience.wpd (source diary, 832 pp WordPerfect, still
 active) exported to Stingray Experience.txt (44,832 lines,
 235 stardated entries, 2023.05.06 - 2026.07.11) for text
 processing.
-105 items across 10 parts.  Each cited to the stardate it
+106 items across 10 parts.  Each cited to the stardate it
 was learned.  Companion: Stingray_Builders_Manual.txt v1.1.
 
 "Not a destination, it's a journey."

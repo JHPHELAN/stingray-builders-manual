@@ -3533,6 +3533,11 @@ A1.  Plug the HDD into Stormy.
        runs (Field Note item 86).
      - If your enclosure has its own AC adapter, use it.
      - Wait ~10 seconds for the Pi to enumerate the device.
+     - One-time setup for Sabrent USB 3 enclosures (JMicron
+       152d:a578): add `usb-storage.quirks=152d:a578:u` to
+       /boot/firmware/cmdline.txt and reboot, otherwise heavy
+       reads (scp for Tier 4a) will bus-reset the drive.  See
+       Field Note item 106 for the full symptom + fix.
 
 A2.  Open a shell on Stormy.  SSH from your workstation, or use
      Stormy's own console.  Optional: wrap in tmux so an SSH drop
@@ -3872,13 +3877,16 @@ Tier 4a workflow (monthly full image):
     AND resets the Tier 4a stamp file, so `backup` will
     show Tier4a green next time you run it.
 
-    If you missed the flag on the initial run, you can
-    do just the upload afterward while the HDD is still
-    mounted:
+    If you missed the flag on the initial run, or the scp
+    step failed after a good `dd`, upload today's existing
+    images without re-imaging:
 
-        scp /mnt/backup/nvme_*_$(date +%F).img.gz \
-            hankrearden:iCloudDrive/Stormy/
-        touch ~/.stormy/last_icloud_copy
+        diskbackup --icloud-only
+
+    This verifies both `nvme_*_$(date +%F).img.gz` files
+    with `gzip -t`, scp's them to hankrearden:iCloudDrive/
+    Stormy/, and resets the Tier 4a stamp.  It refuses if
+    today's images are not already at /mnt/backup.
 
     Manual FileZilla fallback (if SSH is offline):
     1. On Hank Rearden, FileZilla to Stormy and drag the
