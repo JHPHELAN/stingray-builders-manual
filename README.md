@@ -3509,9 +3509,20 @@ Two ways to run the weekly backup:
     lives inside this repo) with an automatic git push,
     and unmounts /mnt/backup at the end so STORMYBAK is
     safe to unplug (pass `--no-unmount` to skip that last
-    step if you plan to chain another operation).  See
-    tools/backup_disk.sh and the "diskbackup" alias line in
-    Chapter 19.1.
+    step if you plan to chain another operation).  Add
+    `--verify` to also run the full four-layer integrity
+    check (gzip -t on both, sha256 cross-check against the
+    Tier 4a copy on Hank Rearden, `fsck.exfat -n`) after
+    the image + upload complete - adds ~20 min unattended.
+    See tools/backup_disk.sh and the "diskbackup" alias
+    line in Chapter 19.1.
+
+  * Verify only (standalone).  Run `verify` on Stormy to
+    check any existing image pair on the mounted HDD -
+    defaults to today's date, or pass `verify YYYY-MM-DD`
+    for older ones, `--latest` to auto-pick the newest
+    pair, `--local-only` to skip the iCloud cross-check.
+    See tools/verify_images.sh.
 
   * Manual step-by-step (Section A below).  Kept as the
     canonical reference for what the automated wrapper does

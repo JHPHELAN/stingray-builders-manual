@@ -14,6 +14,8 @@
 #                       or deferred Tier 4a upload)
 #   - unmount /mnt/backup so STORMYBAK is safe to unplug
 #     (skip with --no-unmount)
+#   - (--verify) chain tools/verify_images.sh at the very end:
+#     gzip -t, sha256 vs iCloud, fsck.exfat -n (~20 min for full-size root)
 #
 # Usage (safe to invoke by absolute path from anywhere):
 #     bash /home/ubuntu/stingray-builders-manual/tools/backup_disk.sh
@@ -23,6 +25,7 @@
 #     bash .../backup_disk.sh --icloud           # also do Tier 4a upload
 #     bash .../backup_disk.sh --icloud-only      # upload existing images only
 #     bash .../backup_disk.sh --no-unmount       # leave /mnt/backup mounted at end
+#     bash .../backup_disk.sh --verify           # verify integrity when done
 #
 # Or via alias (see Chapter 19.1):
 #     alias diskbackup='bash /home/ubuntu/stingray-builders-manual/tools/backup_disk.sh'
@@ -45,6 +48,7 @@ DO_PUSH=1
 DO_ICLOUD=0
 ICLOUD_ONLY=0
 DO_UNMOUNT=1
+DO_VERIFY=0
 NOTE=""
 
 while [[ "${1:-}" != "" ]]; do
@@ -54,8 +58,9 @@ while [[ "${1:-}" != "" ]]; do
         --icloud)      DO_ICLOUD=1 ;;
         --icloud-only) DO_ICLOUD=1; ICLOUD_ONLY=1 ;;
         --no-unmount)  DO_UNMOUNT=0 ;;
+        --verify)      DO_VERIFY=1 ;;
         --note)        shift; NOTE="$1" ;;
-        -h|--help)     sed -n '2,38p' "$0"; exit 0 ;;
+        -h|--help)     sed -n '2,42p' "$0"; exit 0 ;;
         *)             echo "Unknown argument: $1" >&2; exit 2 ;;
     esac
     shift
@@ -222,6 +227,18 @@ if [[ "$DO_ICLOUD" -eq 1 ]]; then
         echo "      Images are local at $MOUNT_POINT; FileZilla them" >&2
         echo "      to %USERPROFILE%\\iCloudDrive\\Stormy\\ manually," >&2
         echo "      then run: touch $HOME/.stormy/last_icloud_copy" >&2
+    fi
+fi
+
+# --- Optional integrity verification (gzip -t, sha256 vs iCloud, fsck.exfat) ---
+if [[ "$DO_VERIFY" -eq 1 ]]; then
+    say "Running verify_images.sh $DATE_TAG (chained via --verify)"
+    if bash "$(dirname "$0")/verify_images.sh" "$DATE_TAG"; then
+        say "verify PASSED"
+    else
+        echo "WARN: verify FAILED for $DATE_TAG - see [FAIL] lines above." >&2
+        # Don't die here; images are already committed to BACKUPS.md.  The
+        # user needs to know but the disk state is what it is.
     fi
 fi
 
