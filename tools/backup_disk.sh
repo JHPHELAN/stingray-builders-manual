@@ -81,7 +81,7 @@ die() { echo "ERROR:" "$@" >&2; exit 1; }
 # an actual exfat mount is present.  mountpoint -q alone would report YES
 # for the autofs trigger even when STORMYBAK isn't plugged in.
 ls "$MOUNT_POINT" >/dev/null 2>&1 || true
-findmnt -q -t exfat "$MOUNT_POINT" \
+findmnt -t exfat "$MOUNT_POINT" >/dev/null 2>&1 \
     || die "STORMYBAK is not mounted at $MOUNT_POINT; plug it in and rerun (see Ch 20.4 A1). If /etc/fstab has an x-systemd.automount entry, simply plugging in should suffice; if not, run 'sudo mount /dev/sda1 $MOUNT_POINT'."
 [[ -d "$MANUAL_REPO_DIR/.git" ]] || die "no git checkout at $MANUAL_REPO_DIR (needed for BACKUPS.md automation)"
 [[ -f "$BACKUPS_MD" ]] || die "BACKUPS.md not found at $BACKUPS_MD"
