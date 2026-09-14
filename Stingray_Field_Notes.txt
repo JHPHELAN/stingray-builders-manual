@@ -1859,6 +1859,53 @@ PART X - TOOLS, ECOSYSTEM, PEOPLE
      been ~0 if the probe had been sanity-checked against
      the actual remote shell before it shipped.
 
+--------------------------------------------------------------
+108. ***LINUX AUTOMOUNT + WRITE CACHE != WINDOWS QUICK
+     REMOVAL***  (2026.09.14)
+     Windows offers a "Quick removal" policy (default since
+     Windows 10) that lets you yank a USB drive without
+     using "Safely Remove Hardware".  Under the hood it
+     disables the write-back cache on the device, so every
+     write goes to hardware before returning.  Slower, but
+     safe against sudden unplug.
+     Linux does NOT have an equivalent one-checkbox toggle.
+     The kernel aggressively caches writes in RAM for
+     throughput (which is why STORMYBAK images at 105 MB/s;
+     with `mount -o sync` the same run would crawl at
+     ~20 MB/s).  Yanking a Linux-mounted exFAT filesystem
+     mid-write corrupts it.  Always unmount first.
+     The closest equivalent to Quick Removal semantics is
+     the fstab combination `x-systemd.automount` +
+     `x-systemd.idle-timeout=Nmin`:
+       - mount is created lazily on first access to the
+         mountpoint (no manual `mount` command),
+       - and automatically torn down after N minutes of no
+         I/O.
+     Full fstab line used on Stormy:
+         LABEL=STORMYBAK  /mnt/backup  exfat  \
+           defaults,noatime,uid=1000,gid=1000, \
+           x-systemd.automount, \
+           x-systemd.idle-timeout=5min, \
+           nofail  0  0
+     After adding, `sudo systemctl daemon-reload` and
+     `sudo systemctl start mnt-backup.automount`.  From then
+     on:  plug in the drive, run `diskbackup`, unplug when
+     it says Done.  The script's explicit umount step still
+     runs at the end (belt-and-braces); the idle-timeout is
+     a safety net if the script fails midway or the user
+     forgets to run it after plugging in.
+     Gotcha:  `mountpoint -q /mnt/backup` returns YES even
+     before any access, because the autofs "waiting" mount
+     satisfies the check.  Scripts that want to verify the
+     REAL exfat mount must use `findmnt -q -t exfat
+     /mnt/backup` after touching the mountpoint (a bare `ls`
+     is enough to trigger automount).  Updated
+     tools/backup_disk.sh's sanity check accordingly.
+     Cross-reference:  item 104 (drop `-t exfat` for the
+     kernel driver on Ubuntu 24.04); item 106 (JMicron UAS
+     quirk for the Sabrent enclosure).  Both are
+     prerequisites for this fstab line to "just work".
+
 
 ================================================================
 INDEX BY SYMPTOM (quick-lookup when something goes wrong)
@@ -1896,6 +1943,8 @@ Sabrent USB HDD: scp/gzip -t "Input/output error",
     dmesg "uas_pre_reset: timed out"                106
 `rescue` or `diskbackup --icloud` prints
     "hankrearden not reachable" but manual scp works  107
+"Do I need to unmount before unplugging?" (yes; Linux
+    does not have Windows Quick Removal semantics)      108
 Global costmap paralysis at doorways               61
 RViz keepout mask / map missing                    49
 Config edit didn't take effect                     40
@@ -1993,6 +2042,10 @@ Bulk chronology of the field-note items above:
                         `usb-storage.quirks`)
   2026.09.13  item 107 (probe Hank Rearden with `"exit 0"`,
                         not the Unix-only `true`)
+  2026.09.14  item 108 (Linux automount + write-cache reality
+                        vs Windows Quick Removal; STORMYBAK
+                        fstab with x-systemd.automount +
+                        idle-timeout)
 
 ================================================================
 END OF STINGRAY FIELD NOTES
@@ -2003,7 +2056,7 @@ Experience.wpd (source diary, 832 pp WordPerfect, still
 active) exported to Stingray Experience.txt (44,832 lines,
 235 stardated entries, 2023.05.06 - 2026.07.11) for text
 processing.
-107 items across 10 parts.  Each cited to the stardate it
+108 items across 10 parts.  Each cited to the stardate it
 was learned.  Companion: Stingray_Builders_Manual.txt v1.1.
 
 "Not a destination, it's a journey."

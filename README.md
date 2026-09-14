@@ -3565,7 +3565,18 @@ A3.  Locate the HDD.  Run:
      If any of those is off, STOP.  A wrong device letter later is
      disastrous.
 
-A4.  Mount the HDD.  Run:
+A4.  Mount the HDD.
+
+     If /etc/fstab has an `x-systemd.automount` entry for
+     LABEL=STORMYBAK (see Field Note item 108 for the one-time
+     install), skip this step entirely - the drive will be
+     mounted transparently the moment `diskbackup` or any
+     other process touches /mnt/backup, and unmounted after
+     5 minutes of inactivity.  Verify with:
+
+         findmnt -t exfat /mnt/backup   # expect one line
+
+     Otherwise, mount manually:
 
          sudo mkdir -p /mnt/backup
          sudo mount /dev/sda1 /mnt/backup

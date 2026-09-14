@@ -77,7 +77,12 @@ die() { echo "ERROR:" "$@" >&2; exit 1; }
 
 [[ -b "$BOOT_DEV" ]] || die "boot partition $BOOT_DEV missing"
 [[ -b "$ROOT_DEV" ]] || die "root partition $ROOT_DEV missing"
-mountpoint -q "$MOUNT_POINT" || die "$MOUNT_POINT is not mounted; plug in STORMYBAK and mount it first (see Ch 20.4 Section A4)"
+# Trigger x-systemd.automount if configured (no-op otherwise), then verify
+# an actual exfat mount is present.  mountpoint -q alone would report YES
+# for the autofs trigger even when STORMYBAK isn't plugged in.
+ls "$MOUNT_POINT" >/dev/null 2>&1 || true
+findmnt -q -t exfat "$MOUNT_POINT" \
+    || die "STORMYBAK is not mounted at $MOUNT_POINT; plug it in and rerun (see Ch 20.4 A1). If /etc/fstab has an x-systemd.automount entry, simply plugging in should suffice; if not, run 'sudo mount /dev/sda1 $MOUNT_POINT'."
 [[ -d "$MANUAL_REPO_DIR/.git" ]] || die "no git checkout at $MANUAL_REPO_DIR (needed for BACKUPS.md automation)"
 [[ -f "$BACKUPS_MD" ]] || die "BACKUPS.md not found at $BACKUPS_MD"
 
