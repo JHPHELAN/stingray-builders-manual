@@ -1818,6 +1818,47 @@ PART X - TOOLS, ECOSYSTEM, PEOPLE
      mount:  item 104 (drop `-t exfat`, kernel driver does
      the right thing).
 
+--------------------------------------------------------------
+107. ***PROBE HANK REARDEN WITH `"exit 0"`, NOT `true`***
+     (2026.09.13 - same evening as items 106 and the first
+     `diskbackup --icloud-only` end-to-end test)
+     Symptom:  passwordless SSH from Stormy to Hank Rearden
+     is fully working - direct `ssh hankrearden echo OK`
+     prints OK - but every `rescue` and `diskbackup --icloud`
+     invocation still ended in the graceful WARN branch:
+         WARN: hankrearden not reachable via passwordless SSH.
+     Then a manual retry of the same scp command succeeded
+     immediately.  Twice in one session, before the pattern
+     was noticed.
+     Cause:  the reachability probe at the top of the two
+     scripts was:
+         if ssh -o BatchMode=yes -o ConnectTimeout=5 \
+                hankrearden true 2>/dev/null; then
+     `true` is a Unix builtin.  Hank Rearden is Windows.
+     The OpenSSH server on Windows invokes cmd.exe (or
+     PowerShell), which reports:
+         'true' is not recognized as an internal or external
+         command, operable program or batch file.
+     The command exits nonzero, ssh's exit code follows,
+     the probe reports "unreachable" even though the SSH
+     transport succeeded in ~300 ms.
+     Fix:  use `"exit 0"` - a shell builtin on cmd.exe,
+     PowerShell, AND every POSIX shell - so the probe means
+     what it says regardless of the remote shell:
+         if ssh -o BatchMode=yes -o ConnectTimeout=5 \
+                hankrearden "exit 0" 2>/dev/null; then
+     Applied to both tools/backup_disk.sh and
+     tools/bundle_rescue_kit.sh in the same commit.
+     General rule for probes across a mixed-OS SSH link:
+       - `"exit 0"` - portable
+       - `hostname` - portable (cmd.exe and Unix)
+       - `echo ok` - portable
+       - `true`, `:` - Unix only.  DO NOT use.
+       - `ver` - Windows only.  DO NOT use.
+     Discovery cost:  ~15 min of debugging.  Would have
+     been ~0 if the probe had been sanity-checked against
+     the actual remote shell before it shipped.
+
 
 ================================================================
 INDEX BY SYMPTOM (quick-lookup when something goes wrong)
@@ -1853,6 +1894,8 @@ Foxglove Studio connection failed                  82, 83
 foxglove_bridge log spam - "not initialized"       105
 Sabrent USB HDD: scp/gzip -t "Input/output error",
     dmesg "uas_pre_reset: timed out"                106
+`rescue` or `diskbackup --icloud` prints
+    "hankrearden not reachable" but manual scp works  107
 Global costmap paralysis at doorways               61
 RViz keepout mask / map missing                    49
 Config edit didn't take effect                     40
@@ -1948,6 +1991,8 @@ Bulk chronology of the field-note items above:
   2026.09.13  item 106 (JMicron 152d:a578 UAS bug on
                         Sabrent HDD; force BOT via
                         `usb-storage.quirks`)
+  2026.09.13  item 107 (probe Hank Rearden with `"exit 0"`,
+                        not the Unix-only `true`)
 
 ================================================================
 END OF STINGRAY FIELD NOTES
@@ -1958,7 +2003,7 @@ Experience.wpd (source diary, 832 pp WordPerfect, still
 active) exported to Stingray Experience.txt (44,832 lines,
 235 stardated entries, 2023.05.06 - 2026.07.11) for text
 processing.
-106 items across 10 parts.  Each cited to the stardate it
+107 items across 10 parts.  Each cited to the stardate it
 was learned.  Companion: Stingray_Builders_Manual.txt v1.1.
 
 "Not a destination, it's a journey."
