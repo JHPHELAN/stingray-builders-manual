@@ -31,10 +31,11 @@ TXT = REPO / "Stingray_Builders_Manual.txt"
 MD = REPO / "README.md"
 
 # Skip the .txt's own header + plain-text TOC (regenerated below).
-# 1-based line 111 is the opening `====` of Chapter 0; index 110 in
-# 0-based.  (Updated 2026-09-11 when the placeholder key was added
-# to the front matter.)
-SKIP_LINES_BEFORE = 110
+# 1-based line 115 is the opening `====` of Chapter 0; index 114 in
+# 0-based.  (Bumped from 110 on 2026-09-21 when the version block grew
+# by 4 lines to note the 2026-09-20 rewire amendment.  Bumped from 77
+# on 2026-09-11 when the placeholder key was added to the front matter.)
+SKIP_LINES_BEFORE = 114
 
 # GitHub auto-slug (approximation of github-slugger v2):
 #   1) lowercase
@@ -64,7 +65,11 @@ DIVIDER_RE = re.compile(r"^[=\-]{40,}\s*$")
 FRONT_MATTER = """\
 # Stormy the Stingray - Builder's Manual
 
-Version 1.1 - Compiled 2026-07-20; public release 2026-09-11.
+Version 1.2 - Compiled 2026-07-20; public release 2026-09-11;
+amended 2026-09-21 (right rear Power Input Panel hardware caught
+up: Ch 3.1 rewritten, FN 22 gains DMM verification sub-section and
+15SQ045 diode part swap, Appendix G.9 schematic bumped to
+2026.09.20).
 
 If the SD card dies tomorrow, this document is how Stormy gets rebuilt.
 Present-tense, imperative, subsystem-oriented.  Every procedure is one
@@ -84,7 +89,7 @@ that has been executed successfully on the real robot.
 | [`Stingray_Builders_Manual.txt`](Stingray_Builders_Manual.txt) | **Source of truth.** Plain-text master copy of this document.  All edits go here first; `README.md` is regenerated from it (see [Regenerating this README](#regenerating-this-readme)). |
 | [`Stingray_Field_Notes.txt`](Stingray_Field_Notes.txt) | 105 numbered lessons + indexes distilled from the source log.  Cited throughout the Manual by item number. |
 | [`Stingray_Curation_Notes.txt`](Stingray_Curation_Notes.txt) | 17 chunks of raw stardated distillate from the source log.  Background material for the Manual. |
-| [`kicad/Stingray/`](kicad/Stingray/) | KiCad 10.0 project - schematic, custom symbol library, PCB stub.  Source for Appendix [G.9](#g9--stormy-schematic-2026-08-12png). |
+| [`kicad/Stingray/`](kicad/Stingray/) | KiCad 10.0 project - schematic, custom symbol library, PCB stub.  Source for Appendix [G.9](#g9--stormy-schematic-20260920png). |
 | [`images/`](images/) | Diagrams and photos catalogued in [Appendix G](#appendix-g---diagrams-and-photos). |
 | [`tools/build_readme.py`](tools/build_readme.py) | Regenerates this `README.md` from the `.txt`. |
 | [`LICENSE`](LICENSE) | CC BY 4.0 legal text. |

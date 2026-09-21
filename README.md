@@ -1,6 +1,10 @@
 # Stormy the Stingray - Builder's Manual
 
-Version 1.1 - Compiled 2026-07-20; public release 2026-09-11.
+Version 1.2 - Compiled 2026-07-20; public release 2026-09-11;
+amended 2026-09-21 (right rear Power Input Panel hardware caught
+up: Ch 3.1 rewritten, FN 22 gains DMM verification sub-section and
+15SQ045 diode part swap, Appendix G.9 schematic bumped to
+2026.09.20).
 
 If the SD card dies tomorrow, this document is how Stormy gets rebuilt.
 Present-tense, imperative, subsystem-oriented.  Every procedure is one
@@ -20,7 +24,7 @@ that has been executed successfully on the real robot.
 | [`Stingray_Builders_Manual.txt`](Stingray_Builders_Manual.txt) | **Source of truth.** Plain-text master copy of this document.  All edits go here first; `README.md` is regenerated from it (see [Regenerating this README](#regenerating-this-readme)). |
 | [`Stingray_Field_Notes.txt`](Stingray_Field_Notes.txt) | 105 numbered lessons + indexes distilled from the source log.  Cited throughout the Manual by item number. |
 | [`Stingray_Curation_Notes.txt`](Stingray_Curation_Notes.txt) | 17 chunks of raw stardated distillate from the source log.  Background material for the Manual. |
-| [`kicad/Stingray/`](kicad/Stingray/) | KiCad 10.0 project - schematic, custom symbol library, PCB stub.  Source for Appendix [G.9](#g9--stormy-schematic-2026-08-12png). |
+| [`kicad/Stingray/`](kicad/Stingray/) | KiCad 10.0 project - schematic, custom symbol library, PCB stub.  Source for Appendix [G.9](#g9--stormy-schematic-20260920png). |
 | [`images/`](images/) | Diagrams and photos catalogued in [Appendix G](#appendix-g---diagrams-and-photos). |
 | [`tools/build_readme.py`](tools/build_readme.py) | Regenerates this `README.md` from the `.txt`. |
 | [`LICENSE`](LICENSE) | CC BY 4.0 legal text. |
@@ -71,7 +75,7 @@ Then commit both files together.
   - [2.7  Camera (see Chapter 8)](#27--camera-see-chapter-8)
   - [2.8  Network (see Chapters 9 and 18)](#28--network-see-chapters-9-and-18)
 - [CHAPTER 3 - POWER SYSTEM](#chapter-3---power-system)
-  - [3.1  Topology (target, 2026-09; rewire in progress)](#31--topology-target-2026-09-rewire-in-progress)
+  - [3.1  Topology (current, 2026-09-20)](#31--topology-current-2026-09-20)
   - [3.2  Emergency stop + remote kill switch (two distinct devices)](#32--emergency-stop--remote-kill-switch-two-distinct-devices)
   - [3.3  Shunt Regulator - Pololu 3779](#33--shunt-regulator---pololu-3779)
   - [3.4  Common power symptoms and fixes](#34--common-power-symptoms-and-fixes)
@@ -201,7 +205,7 @@ Then commit both files together.
   - [G.6  OSR kitspace CAD.png](#g6--osr-kitspace-cadpng)
   - [G.7  wifi_heatmap_2026-07-05.png](#g7--wifi_heatmap_2026-07-05png)
   - [G.8  wifi_drive_20260711_075912_signal.png](#g8--wifi_drive_20260711_075912_signalpng)
-  - [G.9  Stormy Schematic 2026-08-12.png](#g9--stormy-schematic-2026-08-12png)
+  - [G.9  Stormy Schematic 2026.09.20.png](#g9--stormy-schematic-20260920png)
 
 
 ## CHAPTER 0 - HOW TO USE THIS MANUAL
@@ -444,7 +448,10 @@ Subsequent chapters go deep on each subsystem.
 
     Battery          Zeee 14.8 V (4S LiPo) 9000 mAh
     Protection       Panel-mount slow-blow fuse
-                     + STPS10L25D Schottky diode
+                     + 15SQ045 Schottky diode pair for
+                       source OR-ing (LiPo + bench-PSU
+                       inputs, cathodes tied to the shared
+                       bus; see FN 22 and Ch 3.1)
                      + Pololu 3779 shunt regulator
                        (17.0 V trip, on-board potentiometer
                        only; no external resistor)
@@ -592,30 +599,24 @@ Subsequent chapters go deep on each subsystem.
 ## CHAPTER 3 - POWER SYSTEM
 
 
-### 3.1  Topology (target, 2026-09; rewire in progress)
+### 3.1  Topology (current, 2026-09-20)
 
-
-Status (2026-09-06):  the source-OR-ing STPS pair described
-below is the DESIGN INTENT; physical rewiring is in progress
-with supplies arriving 2026-09-07 and a KiCAD drawing update
-to follow.  The as-built pre-rewire hardware (single STPS10L25D
-across the fuse on the proto-board) is described in the
-"Fuse-holder proto-board" section further down.  Update this
-section to "as-built" when the rewire is complete and the
-KiCAD schematic in [`kicad/Stingray/`](kicad/Stingray/) matches.
 
     LiPo 14.8 V 9000 mAh (Zeee)
         |
         v
     Panel-mount slow-blow fuse (rated for LiPo current)
-        |  (STPS10L25D Schottky diode on the LiPo positive
+        |  (15SQ045 Schottky diode on the LiPo positive
         |   lead, cathode toward the bus - one of a pair
-        |   for source OR-ing.  A second STPS lives on the
-        |   bench-PSU positive lead when the bench is
+        |   for source OR-ing.  A second 15SQ045 lives on
+        |   the bench-PSU positive lead when the bench is
         |   attached; both feed the same downstream bus so
         |   the two supplies can coexist during hot-swap
-        |   without back-feeding each other.
-        |   See Field Note item 22.)
+        |   without back-feeding each other.  Both diodes
+        |   land in a 12-position terminal strip on the
+        |   right rear Power Input Panel; see "Right rear
+        |   Power Input Panel (2026-09-20, as-built)"
+        |   below and Field Note item 22.)
         |
         +-- (bus-parallel, NOT in line)
         |     Pololu 3779 shunt regulator
@@ -658,29 +659,68 @@ KiCAD schematic in [`kicad/Stingray/`](kicad/Stingray/) matches.
                      is NOT on the hub - it plugs directly
                      into a USB 2.0 port on the Pi.)
 
-Fuse-holder proto-board (2026, pre-rewire as-built):
-  Status (2026-09-06):  this section describes the physical
-  hardware ACTUALLY INSTALLED right now, which pre-dates the
-  source-OR-ing rewire described in the topology diagram
-  above.  The single STPS10L25D shown here across the fuse
-  will be replaced by the OR-ing pair (one STPS per source
-  positive lead) when the 2026-09 rewire is complete.
+Right rear Power Input Panel (2026-09-20, as-built):
+  Replaces the original panel-mount fuse holder + spade-
+  connector cluster + free-form STPS-across-the-fuse
+  proto-board that carried the pre-rewire hardware.  The
+  new panel is mounted to the rear right side panel and
+  gathers all "outside the enclosure" power and signal
+  entries in one place:
 
-  The original build carried the panel-mount fuse holder,
-  its STPS10L25D bypass diode, and the bus input/output
-  wires as a free-form cluster of spade connectors, with
-  wire gauges that were not ideal for the LiPo current.
-  Rebuilt onto a small proto-board:
-    - Four screw-terminal pairs, joined pair-to-pair with
-      solder-bridged wire jumpers on the underside.
-    - STPS10L25D diode plugged directly into one terminal
-      pair (across the fuse).
-    - Panel-mount fuse holder's spade tails crimped tight
-      onto ferrule-tipped leads landing in a second pair.
-    - Battery-side PowerPole feed on a third pair.
-    - Bus-side PowerPole output on the fourth pair.
-  Board trimmed to length and foam-taped to the rear side
-  panel, directly below the panel-mount fuse holder.
+    - Dual Anderson PowerPole panel-mount pair.
+        Upper pair: LiPo battery input.
+        Lower pair: bench power supply input.
+      Both feed the same downstream bus through the
+      source-OR-ing diode pair; either supply can be
+      connected (or both, briefly, for graceful hand-off
+      during drydock work) without back-feeding.
+
+    - Panel-mount slow-blow fuse holder (5x20mm cartridge).
+      In series with the ORed positive bus, cuts fault
+      currents downstream of the diode block.
+
+    - 12-position horizontal terminal strip.
+      Carries the two 15SQ045 Schottky blocking diodes
+      (one per source input, cathodes tied to the shared
+      bus).  Screw terminals make the diodes field-
+      replaceable without a soldering iron and give the
+      DMM tidy probe points for verifying the block
+      (see FN 22, "Verifying the OR-ing block with a
+      DMM").
+
+    - RJ45 keystone jack (in-panel ethernet extension).
+      Runs a short internal patch to the Pi's ethernet
+      jack.  Makes the wired drydock connection to Hank
+      Rearden reachable at the outside of the enclosure
+      without opening the top plate.
+
+  Field verification of the diode block (bench, 2026-09-20):
+  with only the LiPo connected, the unused bench-PSU
+  PowerPole read near full bus voltage on the DMM until
+  a 10 kohm resistor was placed across the probes as a
+  diagnostic load; reading then collapsed to a few mV.
+  See FN 22 "Verifying the OR-ing block with a DMM" for
+  the divider-math explanation of why an unloaded
+  reverse-biased Schottky looks like ~100 kohm to a
+  10 Mohm meter input.
+
+  Photographs (in the stingray build repo):
+    images/Power Input front.png
+    images/Power Input rear.png
+    images/Side Panel Wide Right Rear Fuse PowerPole Terminal Ethernet.png
+    images/Power Input Side Panel Terminal Strip Schematic.png
+  KiCad source (in this repo):
+    kicad/Stingray/Stingray.kicad_sch  (top-level sheet)
+    kicad/Stingray/Dual Power Input/Dual Power Input.kicad_sch
+
+  Historical note:  the pre-rewire hardware was a small
+  proto-board with four screw-terminal pairs joined by
+  solder-bridged wire jumpers on the underside, carrying
+  a single STPS10L25D "across the fuse," the panel-mount
+  fuse holder's spade tails, and battery/bus PowerPole
+  feeds.  Board was foam-taped to the rear side panel
+  directly below the fuse holder.  Removed when the new
+  panel was installed.
 
 ### 3.2  Emergency stop + remote kill switch (two distinct devices)
 
@@ -4344,7 +4384,18 @@ Compute:
 Power:
     1 x Zeee 14.8V 9000 mAh 4S LiPo
     1 x Panel-mount slow-blow fuse holder (5x20mm)
-    1 x STPS10L25D Schottky diode
+    2 x 15SQ045 Schottky diode (source OR-ing pair;
+        one per battery / bench-PSU input, cathodes tied
+        to the shared bus; see FN 22 and Ch 3.1)
+    1 x 12-position horizontal terminal strip
+        (carries the OR-ing diode pair; screw terminals
+        for field-replaceable diodes and DMM probe points)
+    2 x Anderson PowerPole panel-mount pair
+        (battery + bench-PSU inputs on the right rear
+        Power Input Panel)
+    1 x RJ45 keystone jack + in-panel patch
+        (ethernet extension from Pi to the outside of
+        the right rear side panel)
     1 x Pololu 3779 Shunt Regulator ($21)
         (https://www.pololu.com/product/3779)
     2 x DPDT slide switch (headlights)
@@ -4885,26 +4936,40 @@ Subject:         WiFi signal-strength trace along a house-wide
                  Companion to G.7's static heat map.
 Referenced from: Chapter 9.4 (WiFi monitoring - drive survey)
 
-### G.9  Stormy Schematic 2026-08-12.png
+### G.9  Stormy Schematic 2026.09.20.png
 
-![Stormy Schematic 2026-08-12.png](images/Stormy%20Schematic%202026-08-12.png)
+![Stormy Schematic 2026.09.20.png](images/Stormy%20Schematic%202026.09.20.png)
 
 
-File:            images/Stormy Schematic 2026-08-12.png
+File:            images/Stormy Schematic 2026.09.20.png
 Subject:         Full electrical schematic of Stormy as of
-                 2026.08.12, drawn in KiCad 10.0.  Covers
+                 2026.09.20, drawn in KiCad 10.0.  Covers
                  every subsystem in one sheet:
-                   - 12 V battery, main switch, LVD, shunt
-                     regulator
+                   - Dual Power Input panel (right rear):
+                     LiPo + bench-PSU PowerPole inputs
+                     through the source-OR-ing 15SQ045
+                     Schottky pair, panel-mount fuse, RJ45
+                     ethernet extension.  New in the
+                     2026-09-20 rewire; see FN 22 and
+                     Ch 3.1 "Right rear Power Input Panel"
+                   - Pololu 3779 shunt regulator, main
+                     e-stop bus break
                    - remote kill switch -> RoboClaw S5
                    - RoboClaw 2x15A, motors, encoders
                    - Pi 5 with UART0 to RoboClaw and I2C1
                      to BNO085
                    - USB tree (LiDAR, OAK-D, WiFi antenna)
-                 Supersedes the 2025.04.07 StingraySchematic
-                 PDF listed in Ch 20 / archives.
+                 Supersedes the 2026.08.12 render (this
+                 file's ancestor, deleted in the same
+                 commit) and the 2025.04.07
+                 StingraySchematic PDF listed in Ch 20 /
+                 archives.
 Source:          KiCad 10.0 project, tracked in this repo:
-                 kicad/Stingray/Stingray.kicad_pro
+                 kicad/Stingray/Stingray.kicad_pro (top-
+                 level sheet)
+                 kicad/Stingray/Dual Power Input/
+                     Dual Power Input.kicad_pro (sub-sheet
+                     for the right rear panel)
                  Regenerate the PNG by opening the schematic
                  in KiCad and re-exporting when wiring
                  changes.  Custom symbols live in

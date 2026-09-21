@@ -392,10 +392,11 @@ PART II - ELECTRICAL
 22. ***POWER PROTECTION: FUSE + SOURCE-OR-ING DIODES +
     SHUNT REGULATOR***  (2025.12.07 install of 3779;
     external-resistor guidance added 2026.07.26; STPS role
-    corrected 2026.09.06)
+    corrected 2026.09.06; hardware caught up on right rear
+    Power Input Panel with 15SQ045 diode pair 2026-09-20)
     Panel-mount slow-blow fuse: cuts fault currents on the
     shared bus.
-    STPS10L25D Schottky diodes - SOURCE OR-ING FOR HOT-SWAP:
+    15SQ045 Schottky diodes - SOURCE OR-ING FOR HOT-SWAP:
     one on the LiPo positive lead, one on the bench-PSU
     positive lead, both cathodes tied to the shared bus.
     Purpose is source OR-ing so battery and bench PSU can
@@ -430,14 +431,62 @@ PART II - ELECTRICAL
       external resistor only when the shunt MOSFET gets hot
       in normal use.
 
-    Scope note (James 2026.09.06):  earlier wording described
-    a single STPS10L25D "across the fuse" as a fuse-blown-
+    Scope note (James 2026.09.06 -> hardware caught up
+    2026-09-20):  earlier wording described a single
+    STPS10L25D "across the fuse" as a fuse-blown-
     case backup.  That was never the actual role.  The real
-    arrangement is a source OR-ing PAIR (one STPS on each
-    input's positive lead) so battery and bench PSU can
-    coexist during hot-swap without back-charging each
+    arrangement is a source OR-ing PAIR (one Schottky on
+    each input's positive lead) so battery and bench PSU
+    can coexist during hot-swap without back-charging each
     other.  Manual Chapter 3.1 topology annotation and
-    notes updated in the same pass.
+    notes updated in the 2026.09.06 pass.  Physical rewire
+    installed on Stormy 2026-09-20 as the right rear Power
+    Input Panel; see Manual Ch 3.1 "Right rear Power Input
+    Panel (2026-09-20, as-built)" and the four assembly
+    photographs in the stingray build repo
+    (images/Power Input front.png,
+    images/Power Input rear.png,
+    images/Side Panel Wide Right Rear Fuse PowerPole Terminal Ethernet.png,
+    images/Power Input Side Panel Terminal Strip Schematic.png).
+
+    Part-number footnote:  STPS10L25D (10 A / 25 V, TO-220
+    dual, common-cathode) was the pre-rewire design intent
+    and appears in earlier Manual revisions and the source
+    log through 2026.09.06.  Installed on 2026-09-20 is
+    15SQ045 (15 A / 45 V, DO-27 axial single).  Both are
+    low-Vf Schottky rectifiers suitable for source OR-ing.
+    The 15SQ045 was chosen for higher I/V margin (the 4S
+    LiPo bus is 14.8 V nominal but peaks near 16.8 V at
+    full charge; the STPS's 25 V rating is thin) and for
+    its axial form factor that plugs directly into the
+    12-position terminal strip on the new panel without a
+    heat sink or dead-bug soldering.
+
+    Verifying the OR-ing block with a DMM (James + Sergei,
+    2026-09-20):  with the LiPo connected but no downstream
+    load turned on, a modern DMM probing the UNUSED bench-
+    PSU PowerPole reads near full bus voltage.  That is
+    not a diode failure - it is the meter's own ~10 Mohm
+    input impedance forming a voltage divider with the
+    reverse-biased Schottky, which itself looks like
+    ~100 kohm of leakage impedance with no other load:
+         Vmeter = Vbus x (10 Mohm) / (100 kohm + 10 Mohm)
+                ~= 0.99 x Vbus
+    The reading is caused by a few microamps of leakage
+    current, not real bus current flowing through the
+    diode.  Diagnostic fix: put a 10 kohm resistor across
+    the DMM probes.  The 10 kohm swamps the meter's
+    10 Mohm and the divider collapses:
+         Vmeter = Vbus x (10 kohm) / (100 kohm + 10 kohm)
+                ~= 0.09 x Vbus at worst
+         Real reading (leakage-limited): a few mV.
+    A few-mV reading confirms the block is intact.  In
+    normal operation the downstream load is ohms to
+    hundreds of ohms, not megohms, so no phantom voltage
+    appears at the unused input during real use.  Keep a
+    10 kohm 1/4 W resistor with the DMM probe leads for
+    future source-OR verifications.  Credit to Sergei
+    (slgrobotics) for the tip.
 
 --------------------------------------------------------------
 23. ***REVERSED-POLARITY SANITY TEST***  (2026.03.21)
