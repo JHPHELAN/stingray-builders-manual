@@ -189,13 +189,22 @@ ROW="| $DATE_TAG | $BOOT_RAW_H / $BOOT_GZ_H     | $ROOT_RAW_H / $ROOT_GZ_H     |
 say "Appending to BACKUPS.md:"
 echo "$ROW"
 
+# Refresh from origin BEFORE the append so `git pull --rebase` sees a clean
+# working tree.  If we appended first (previous behavior) the pull would fail
+# with "cannot pull with rebase: You have unstaged changes." and set -e would
+# kill the script before the --icloud scp/--verify chain ran.  (2026-09-25)
+if [[ "$DO_PUSH" -eq 1 ]]; then
+    say "git pull --rebase --quiet in $MANUAL_REPO_DIR (pre-append)"
+    ( cd "$MANUAL_REPO_DIR" && git pull --rebase --quiet ) \
+        || die "git pull --rebase failed in $MANUAL_REPO_DIR - working tree dirty? commit/stash first, or rerun with --no-push"
+fi
+
 # Append the row.  Assumes the file already has a header row + separator.
 printf '%s\n' "$ROW" >> "$BACKUPS_MD"
 
 if [[ "$DO_PUSH" -eq 1 ]]; then
     say "git add / commit / push in $MANUAL_REPO_DIR"
     ( cd "$MANUAL_REPO_DIR" && \
-      git pull --rebase --quiet && \
       git add BACKUPS.md && \
       git commit -m "backup: Tier-2 image $DATE_TAG (${MB_PER_S} MB/s)" && \
       git push )
