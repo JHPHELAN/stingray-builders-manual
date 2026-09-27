@@ -488,6 +488,44 @@ PART II - ELECTRICAL
     future source-OR verifications.  Credit to Sergei
     (slgrobotics) for the tip.
 
+    Bench-power indicator LED lesson (James, 2026-09-27,
+    post-install hot-swap test):  The Panel was
+    hot-swap-tested by connecting the bench PSU cable to
+    the bench PowerPole while the LiPo was still on, then
+    pulling the LiPo.  On the first attempt the Pi died.
+    Cause was NOT the diode block - it was operator error
+    on the bench PSU.  The supply used here (a
+    programmable bench unit) treats "cable plugged in" and
+    "output enabled" as two separate states: the front-
+    panel ON switch AND a distinct OUTPUT button both have
+    to be pushed before current flows.  A visual check of
+    the barrel jack and PowerPole is not enough to confirm
+    the bus has a live second source.
+    Fix (installed same day): a green LED with an
+    integrated current-limiting resistor (from the
+    multi-colour LED assortment already in the parts
+    inventory - see Manual BOM section) wired between the
+    bench-input POSITIVE rail UPSTREAM of the source-OR-
+    ing diode and a free terminal-strip common NEGATIVE.
+    LED illuminated green means the bench PSU is actually
+    delivering current; LED dark means the cable is
+    plugged in but the supply is not outputting.  The
+    battery input needs no such indicator: the LiPo has
+    no output switch, so "plugged in" and "hot" are the
+    same state.
+    Ferrule practice for the LED's fine leads:
+      * Positive end (LED lead shares a terminal-strip
+        screw with the diode lead): black 16 AWG ferrule
+        sized to accept both leads together.
+      * Negative end: red 18 AWG ferrule on the fine LED
+        wire, folded four times to fill the ferrule
+        barrel so the terminal-strip screw has enough
+        material to grip.
+    See Manual Ch 3.1 "Green power-source indicator LED"
+    for the same wiring detail in the panel description,
+    and the LED-illuminated photograph in the stingray
+    build repo (images/Power Input Side Panel LED.JPG).
+
 --------------------------------------------------------------
 23. ***REVERSED-POLARITY SANITY TEST***  (2026.03.21)
     After adding an inline diode in a battery lead, VERIFY

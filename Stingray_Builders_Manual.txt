@@ -4,7 +4,11 @@ Version 1.2 - Compiled 2026-07-20; public release 2026-09-11;
               amended 2026-09-21 (right rear Power Input Panel
               hardware caught up: Ch 3.1 rewritten, FN 22 gains
               DMM verification sub-section and 15SQ045 part
-              swap, Appendix G.9 schematic bumped to 2026.09.20)
+              swap, Appendix G.9 schematic bumped to 2026.09.20);
+              amended 2026-09-27 (Panel hot-swap verified; green
+              power-source indicator LED added to bench input
+              side; Ch 3.1 and FN 22 gain LED sub-sections;
+              Panel photo filenames updated to current)
 ================================================================
 
 Owner:       James H Phelan, MD
@@ -611,6 +615,32 @@ Right rear Power Input Panel (2026-09-20, as-built):
       Rearden reachable at the outside of the enclosure
       without opening the top plate.
 
+    - Green power-source indicator LED (bench input side
+      only).  Wired between the bench-input POSITIVE rail
+      UPSTREAM of the source-OR-ing diode and a free
+      terminal-strip common NEGATIVE.  The LED body has an
+      integrated current-limiting resistor (pulled from
+      the multi-colour LED assortment already listed in
+      the parts appendix), so no external resistor is
+      needed.  When the LED is illuminated green, the
+      bench PSU is actually delivering current to the
+      bus; that distinguishes "plugged in but output off"
+      from "plugged in and hot" (see Field Note 22
+      sub-section "Bench-power indicator LED lesson"
+      for why this matters).  Ferrule sizing for the
+      LED's fine leads:
+        * Positive end (LED lead + diode lead share one
+          terminal-strip screw): black 16 AWG ferrule
+          sized to accept both leads together.
+        * Negative end: red 18 AWG ferrule on the fine
+          LED wire, folded four times to fill the ferrule
+          barrel so the terminal-strip screw has enough
+          material to grip.
+      No indicator on the battery input:  the LiPo has no
+      output switch, so if the PowerPole is plugged in the
+      source is live; there is nothing to distinguish
+      from.
+
   Field verification of the diode block (bench, 2026-09-20):
   with only the LiPo connected, the unused bench-PSU
   PowerPole read near full bus voltage on the DMM until
@@ -621,11 +651,30 @@ Right rear Power Input Panel (2026-09-20, as-built):
   reverse-biased Schottky looks like ~100 kohm to a
   10 Mohm meter input.
 
+  Post-install hot-swap verification (2026-09-27):
+  Panel assembled and successfully hot-swap tested; no
+  glitch on the bus during the LiPo -> bench PSU
+  handover.  The verification also caught a
+  bench-PSU-specific gotcha:  on this supply, plugging
+  the barrel jack into the PowerPole cable is NOT the
+  same as the supply being HOT - the front-panel ON
+  switch AND a separate OUTPUT button both have to be
+  pushed for current to actually flow.  A first attempt
+  at the hot-swap dropped the Pi because the bench PSU
+  was cabled in but its output was off.  The
+  green indicator LED described above was added
+  immediately afterwards to make the "output live"
+  state visible at a glance.  Full narrative in
+  Field Note 22, "Bench-power indicator LED lesson".
+
   Photographs (in the stingray build repo):
-    images/Power Input front.png
-    images/Power Input rear.png
+    images/Power Input Panel LED front.jpg
+    images/Power Input Panel LED back.jpg
+    images/Power Input Side Panel LED.JPG           (LED
+                              illuminated during a live
+                              bench-power hot-swap test)
     images/Side Panel Wide Right Rear Fuse PowerPole Terminal Ethernet.png
-    images/Power Input Side Panel Terminal Strip Schematic.png
+    images/Power Input Side Panel Terminal Strip LED Schematic.png
   KiCad source (in this repo):
     kicad/Stingray/Stingray.kicad_sch  (top-level sheet)
     kicad/Stingray/Dual Power Input/Dual Power Input.kicad_sch
