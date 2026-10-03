@@ -15,3 +15,4 @@ Tier-2 weekly full-disk backups per Chapter 20.4 of the Builder's Manual.
 | 2026-09-13 | 512 MB / 168 MB     | 238.0 GiB / 13.3 GiB     | 105 MB/s (USB 3.0) | `gzip -t` OK on both |  |
 | 2026-09-21 | 512 MB / 168 MB     | 238.0 GiB / 13.6 GiB     | 105 MB/s (USB 3.0) | `gzip -t` OK on both |  |
 | 2026-09-25 | 512 MB / 168 MB     | 238.0 GiB / 13.5 GiB     | 105 MB/s (USB 3.0) | `gzip -t` OK on both |  |
+| 2026-10-03 | 512 MB / 168 MB     | 238.0 GiB / 18.3 GiB     | 97 MB/s (USB 3.0) | `gzip -t` OK on both | Weekly. Shipped backup_check autofs-hang fix + nav2 MPPI tuning checkpoint this session. |
