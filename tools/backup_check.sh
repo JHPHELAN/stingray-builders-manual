@@ -110,7 +110,12 @@ check_git_repo "$ARTICUBOT_DIR" "Tier1"
 check_git_repo "$DOTFILES_DIR"  "Tier1"
 
 # --- Tier 2: latest STORMYBAK image if the HDD is currently mounted ---
-if mountpoint -q "$STORMYBAK_MOUNT"; then
+# NOTE: $STORMYBAK_MOUNT is a systemd autofs path. Calling `mountpoint`/`stat`
+# on it while the weekly STORMYBAK HDD is unplugged triggers the automount and
+# blocks until the autofs timeout (hangs this script). Probe /proc/mounts for a
+# REAL (non-autofs) filesystem mounted there instead - this never triggers the
+# automount, so an absent HDD just warns and we skip on.
+if awk -v m="$STORMYBAK_MOUNT" '$2==m && $3!="autofs" {found=1} END {exit !found}' /proc/mounts; then
     latest_boot=$(ls -1t "$STORMYBAK_MOUNT"/nvme_root_*.img.gz 2>/dev/null | head -n1 || true)
     if [[ -n "${latest_boot:-}" ]]; then
         days=$(days_since_file "$latest_boot")
